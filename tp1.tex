@@ -1,0 +1,428 @@
+\documentclass{article}
+
+\usepackage[french]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsfonts}            %For \leadsto
+\usepackage{amsmath}             %For \text
+\usepackage{fancybox}            %For \ovalbox
+\usepackage{hyperref}
+\usepackage{color}
+
+\DeclareUnicodeCharacter{03BB}{\ensuremath{{\color{black}{\lambda}}}}
+
+\title{Travail pratique \#1}
+\author{IFT-2035}
+
+\begin{document}
+
+\maketitle
+
+\newcommand \mML {\ensuremath\mu\textsl{ML}}
+\newcommand \kw [1] {\textsf{#1}}
+\newcommand \id [1] {\textsl{#1}}
+\newcommand \punc [1] {\kw{`#1'}}
+\newcommand \str [1] {\texttt{"#1"}}
+\newenvironment{outitemize}{
+  \begin{itemize}
+  \let \origitem \item \def \item {\origitem[]\hspace{-18pt}}
+}{
+  \end{itemize}
+}
+\newcommand \Align [2][t] {\begin{array}[#1]{@{}l} #2 \end{array}}
+
+\section{Survol}
+
+Ce TP vise à améliorer la compréhension des langages fonctionnels en
+utilisant un langage de programmation fonctionnel (Haskell) et en écrivant
+une partie d'un interpréteur d'un langage de programmation fonctionnel (en
+l'occurence une sorte de Lisp).  Les étapes de ce travail sont les suivantes:
+\begin{enumerate}
+\item Parfaire sa connaissance de Haskell.
+\item Lire et comprendre cette donnée.  Cela prendra probablement une partie
+  importante du temps total.
+\item Lire, trouver, et comprendre les parties importantes du code fourni.
+\item Compléter le code fourni.
+\item Écrire un rapport.  Il doit décrire \textbf{votre} expérience pendant
+  les points précédents: problèmes rencontrés, surprises, choix que vous
+  avez dû faire, options que vous avez sciemment rejetées, etc...  Le
+  rapport ne doit pas excéder 5 pages.
+\end{enumerate}
+
+Ce travail est à faire en groupes de 2 étudiants.  Le rapport, au format
+\LaTeX\ exclusivement (compilable sur \texttt{ens.iro}) et le code sont
+à remettre par remise électronique avant la date indiquée.  Aucun retard ne
+sera accepté.  Indiquez clairement votre nom au début de chaque fichier.
+
+Ceux qui veulent faire ce travail seul(e)s doivent d'abord en obtenir
+l'autorisation, et l'évaluation de leur travail n'en tiendra pas compte.
+Des groupes de 3 ou plus sont \textbf{exclus}.
+
+\newpage
+\section{Slip: Une sorte de Lisp}
+
+\begin{figure}
+  \begin{displaymath}
+    \begin{array}{r@{~}r@{~}l@{~~}l}
+      e &::=& n & \text{Un entier signé en décimal} \\
+      &\mid& x & \text{Une variable}  \\
+      &\mid& (\kw{if}~e~e_{\kw{then}}~e_{\kw{else}}) &
+           \text{Expression conditionelle} \\
+      &\mid& (e_0~e_1~...~e_n) &
+           \text{Un appel de fonction} \\
+      &\mid& (\kw{fob}~(x_1~...~x_n)~e) & \text{Une fonction} \\
+      &\mid& (\kw{let}~x~e_1~e_2) &
+           \text{Déclaration locale simple} \\
+      &\mid& (\kw{fix}~(d_1~...~d_n)~e) &
+           \text{Déclarations locales récursives} \\
+      &\mid& + \mid - \mid * \mid / \mid ... &
+           \text{Opérations binaires prédéfinies}
+       \medskip \\
+      d &::=& (x~e) & %% \mid ((x~x_1~...~x_n)~e)
+          \text{Déclaration de variable} \\
+      &\mid& ((x~x_1~...~x_n)~e) &
+           \text{Déclaration de fonction}
+    \end{array}
+  \end{displaymath}
+  \caption{Syntaxe de Slip}
+  \label{fig:syntaxe}
+\end{figure}
+
+Vous allez travailler sur l'implantation d'un langage fonctionnel dont la
+syntaxe est inspirée du langage Lisp.  La syntaxe de ce langage est décrite
+à la Figure~\ref{fig:syntaxe}.
+%%
+À remarquer que comme toujours avec la syntaxe de style Lisp, les
+parenthèses sont significatives({!}).
+
+Les formes \kw{let} et \kw{fix} (nommée ainsi parce qu'elle construit ce
+qu'on appelle parfois un ``point fixe'') sont utilisées pour donner des noms
+à des définitions locales.  La différence est que \kw{let} est une forme
+plus simple qui n'autorise pas les définitions récursives.  Exemple:
+\begin{displaymath}
+  \Align[c]{(\kw{let}~x~2~(\kw{let}~y~3~(+~x~y)))} \;\;\;\;\leadsto^*\;\;\;\;5
+\end{displaymath}
+\begin{displaymath}
+  \Align[c]{(\kw{fix}~(\Align{(x~2)\\(y~3))} \\\;\; (+~x~y))} \;\;\;\;\leadsto^*\;\;\;\;5
+\end{displaymath}
+Vu que beaucoup de définitions locales sont des fonctions, la forme \kw{fix}
+accepte une syntaxe particulière pour définir des fonctions:
+\begin{displaymath}
+  \Align[c]{(\kw{fix}~(\Align{(y~10) \\
+              (\Align{(\id{div2}~x) \\
+                (/~x~2)))}}
+            \\\;\;(\id{div2}~y))}
+  \;\;\;\;\leadsto^*\;\;\;\;5
+\end{displaymath}
+Les définitions d'un \kw{fix} peuvent être mutuellement récursives.  Exemple:
+\begin{displaymath}
+  \Align[c]{
+    (\kw{fix}~
+    (\Align{
+      (\Align{(\id{even}~x)~
+        (\kw{if}~(=~x~0)~\id{true}~(\id{odd}~(-~x~1))))} \\
+      (\Align{(\id{odd}~x)~
+        (\kw{if}~(=~x~0)~\id{false}~(\id{even}~(-~x~1)))))}} \\
+    \;\;(\id{odd}~42))}
+  \leadsto^*\;\;\;\;\kw{False}
+\end{displaymath}
+
+\subsection{Sucre syntaxique}
+\label{sec:sucre}
+
+La syntaxe d'une déclaration de fonction est du sucre
+syntaxique, et elle est régie par l'équivalence suivante pour les déclarations:
+\begin{displaymath}
+  \begin{array}{r@{\;\;\;\;\Longleftrightarrow\;\;\;\;}l}
+    ((x~x_1~...~x_n)~e) &
+        (x~(\kw{fob}~(x_1~...~x_n)~e))
+  \end{array}
+\end{displaymath}
+où \kw{fob} s'appelle ainsi parce qu'il construit un objet fonction
+(\emph{function object} en anglais).
+Votre première tâche sera d'écrire une fonction \id{s2l} qui va
+``éliminer'' le sucre syntaxique, c'est à dire faire l'expansion des formes
+de gauche (présumément plus pratiques pour le programmeur) dans leur
+équivalent de droite, de manière à réduire le nombre de cas différents
+à gérer dans le reste de l'implantation du langage.  Cette fonction va aussi
+transformer le code dans un format plus facile à manipuler par la suite.
+
+\subsection{Sémantique dynamique}
+
+Slip, comme Lisp, est un langage typé dynamiquement, c'est à dire que ses
+variables peuvent contenir des valeurs de n'importe quel type.  Il n'y
+a donc pas de sémantique statique (règles de typage).
+
+Les \emph{valeurs} manipulées à l'exécution par notre langage sont les entiers, les
+fonctions, et les listes (dénotées $[]$, et $[v_1~.~v_2]$).  De plus la
+notation de listes est étendue de sorte que $[v_1~.~[v_2~.~[v_3~.~v_4]]]$ se
+note $[v_1~v_2~v_3~.~v_4]$ et qu'un ``$. []$'' final peut s'éliminer.
+Donc $[v_1~v_2]$ est équivalent à $[v_1~.~[v_2~.~[]]]$.
+
+Les règles d'évaluation fondamentales sont les suivantes:
+\begin{displaymath}
+  \begin{array}{r@{\;\;\;\leadsto\;\;\;}l}
+    ((\kw{fob}~(x_1~...~x_n)~e)~v_1~...~v_n) & e[v_1,...,v_n/x_1,...,x_n] \\
+    (\kw{let}~x~v~e) & e[v/x] \\
+    (\kw{fix}~((x_1~v_1)~...~(x_n~v_n))~e) & e[v_1,...,v_n/x_1,...,x_n]
+  \end{array}
+\end{displaymath}
+La notation $e[v/x]$ représente l'expression $e$ dans un environnement où la
+variable $x$ prend la valeur $v$.  L'usage de $v$ dans les règles ci-dessus
+indique qu'il s'agit bien d'une valeur plutôt que d'une expression non
+encore évaluée.  Par exemple les $v$ dans la première règle indiquent que
+lors d'un appel de fonction, les arguments doivent être évalués avant
+d'entrer dans le corps de la fonction, i.e. on veut l'appel par valeur.
+
+En plus des règles $\beta$ ci-dessus, les différentes primitives se
+comportent comme suit:
+\begin{displaymath}
+  \begin{array}{r@{\;\;\;\leadsto\;\;\;}l}
+    (+~n_1~n_2) & n_1 + n_2 \\
+    (-~n_1~n_2) & n_1 - n_2 \\
+    (*~n_1~n_2) & n_1 \times n_2 \\
+    (/~n_1~n_2) & n_1 \div n_2 \\
+    (\kw{if}~\id{true}~e_1~e_2) & e_1 \\
+    (\kw{if}~\id{false}~e_1~e_2) & e_2 \\
+  \end{array}
+\end{displaymath}
+
+Donc il s'agit d'une variante du $\lambda$-calcul sans grande surprise.
+La portée est lexicale et l'ordre d'évaluation est présumé être par
+valeur, mais vu que le langage est pur, la différence n'est pas très
+importante pour ce travail.
+
+\section{Implantation}
+
+L'implantation du langage fonctionne en plusieurs phases:
+\begin{enumerate}
+\item Une première phase d'analyse lexicale et syntaxique transforme le code
+  source en une représentation décrite ci-dessous, appelée \id{Sexp} dans le
+  code.  Ce n'est pas encore un arbre de syntaxe abstraite (cela
+  s'apparente en fait à XML ou JSON).
+\item Une deuxième phase, appelée \id{s2l}, termine l'analyse syntaxique et
+  commence la compilation, en transformant cet arbre en un vrai arbre de
+  syntaxe abstraite dans la représentation appelée \id{Lexp} dans le code.
+  Comme mentionné, cette phase commence déjà la compilation vu que le
+  langage \id{Lexp} n'est pas identique à notre langage source.  En plus de
+  terminer l'analyse syntaxique, cette phase élimine le sucre syntaxique
+  (i.e.~les règles de la forme $...\Longleftrightarrow...$), et doit faire
+  quelques ajustements supplémentaire.
+\item Finalement, une fonction \id{eval} procède à l'évaluation de
+  l'expression par interprétation.
+\end{enumerate}
+%%
+Une partie de l'implantation est déjà fournie: la première ainsi que divers
+morceaux des autres.  Votre travail consistera à compléter les trous.
+
+\subsection{Analyse lexicale et syntaxique}
+
+L'analyse lexicale et syntaxique est déjà implantée pour vous.  Elle est
+plus permissive %% générale
+que nécessaire et accepte n'importe quelle expression de la
+forme suivante:
+%%
+\begin{displaymath}
+  \begin{array}{r@{~}r@{~}l}
+    e & ::= & n ~|~ x ~|~
+     \punc{(}~\{\,e\,\}%% ~[\,.~e\,]
+     ~\punc{)}
+  \end{array}
+\end{displaymath}
+%%
+\begin{outitemize}
+\item $n$ est un entier signé en décimal.  Il est représenté dans l'arbre en
+  Haskell par: $\kw{Snum}~n$.
+\item $x$ est un symbole qui peut être composé d'un nombre quelconque de
+  caractères alphanumériques et/ou de ponctuation.  Par exemple $\punc+$ est
+  un symbole, $\punc{<=}$ est un symbole, $\punc{voiture}$ est un symbole,
+  et $\punc{a+b}$ est aussi un symbole.  Dans l'arbre en Haskell, un symbole
+  est représenté par: $\kw{Ssym}~x$.
+\item $\punc{(}~\{\,e\,\}%% ~[\,.~e\,]
+  ~\punc{)}$ est une liste d'expressions.  Dans l'arbre en Haskell, les
+  listes d'expressions sont représentées par des listes simplement chaînées
+  constituées de paires $\kw{Snode}~\id{left}~\id{right}$ et du marqueur de
+  fin $\kw{Snil}$.  \id{left} est le premier élément de la liste et
+  \id{right} est le reste de la liste (i.e.~ce qui le suit).
+\end{outitemize}
+%%
+Par exemple l'analyseur syntaxique transforme l'expression \texttt{(+ 2 3)}
+dans l'arbre suivant en Haskell:
+\begin{displaymath}
+  \kw{Snode}~(\kw{Ssym}~\str{+})~
+  (\kw{Snode}~(\kw{Snum}~2)~
+  (\kw{Snode}~(\kw{Snum}~3)~
+  \kw{Snil}))
+\end{displaymath}
+%%
+L'analyseur lexical considère qu'un caractère $\punc{;}$ commence un
+commentaire, qui se termine à la fin de la ligne.
+
+\subsection{La représentation intermédiaire \id{Lexp}}
+
+Cette représentation intermédiaire est une sorte d'arbre de syntaxe
+abstraite.  Dans cette représentation, \kw{+}, \kw{-}, ... sont simplement
+des variables prédéfinies, et le sucre syntaxique n'est plus disponible,
+donc les fonctions ne prennent plus qu'un seul argument et la forme \kw{fix}
+ne peut définir que des variables.
+
+Elle est définie par le type:
+
+{\small
+\begin{verbatim}
+data Lexp = Lnum Int             -- Constante entière.
+          | Lbool Bool           -- Constante Booléenne.
+          | Lvar Var             -- Référence à une variable.
+          | Ltest Lexp Lexp Lexp -- Expression conditionelle.
+          | Lfob [Var] Lexp      -- Construction de fobjet.
+          | Lsend Lexp [Lexp]    -- Appel de fobjet.
+          | Llet Var Lexp Lexp   -- Déclaration non-récursive.
+          -- Déclaration d'une liste de variables qui peuvent être
+          -- mutuellement récursives.
+          | Lfix [(Var, Lexp)] Lexp
+          deriving (Show, Eq)
+\end{verbatim}
+}
+
+\subsection{L'environnement d'exécution}
+
+Le code fourni défini aussi l'environnement initial d'exécution, qui
+contient les fonctions prédéfinies du langage telles que l'addition, la
+soustraction, etc.  Il est défini comme une table qui associe à chaque
+identificateur prédéfini la valeur (de type \id{Value}) associée.  La valeur
+ne sera utilisée que lors de l'évaluation, mais la liste peut aussi être
+utile avant, pour détecter l'usage d'une variable non-définie.
+
+\subsection{Évaluation}
+
+L'évaluateur utilise l'environnement initial pour réduire une expression
+(de type \id{Lexp}) à une valeur (de type \id{Value}).
+Bien sûr, l'environnement initial s'appelle ainsi parce que c'est la valeur
+initiale de l'environnement, mais au cours de l'évaluation, cet
+environnement sera ajusté en y ajoutant les variables locales et autres
+arguments de fonction.
+
+\section{Cadeaux}
+
+Comme mentionné, l'analyseur lexical et l'analyseur syntaxique sont
+déjà fournis.  Dans le fichier \texttt{slip.hs}, vous trouverez les
+déclarations suivantes:
+\begin{outitemize}
+\item \id{Sexp} est le type des arbres, il défini les différents noeuds qui
+  peuvent y apparaître.
+\item \id{readSexp} est la fonction d'analyse syntaxique.
+\item \id{showSexp} est un pretty-printer qui imprime une expression sous sa
+  forme ``originale''.
+\item \id{Lexp} est le type de la représentation intermédiaire du même nom.
+\item \id{s2l} est la fonction qui transforme une expression de type
+  \id{Sexp} en \id{Lexp}.
+\item \id{Value} est le type du résultat de l'évaluation d'une expression.
+\item \id{env0} est l'environnement initial.
+\item \id{eval} est la fonction d'évaluation qui transforme une expression
+  de type \id{Lexp} en une valeur de type \id{Value}.
+\item \id{evalSexp} est une fonction qui combine les phases ci-dessus pour
+  évaluer une \id{Sexp}.
+\item \id{run} est la fonction principale qui lie le tout; elle prend un nom
+  de fichier et applique \id{evalSexp} sur toutes les expressions trouvées
+  dans ce fichier.
+\end{outitemize}
+
+Voilà ci-dessous un exemple de session interactive sur une machine GNU/Linux,
+avec le code fourni:
+{\small
+\begin{verbatim}
+% ghci slip.hs
+GHCi, version 9.0.2: https://www.haskell.org/ghc/  :? for help
+[1 of 1] Compiling Main             ( slip.hs, interpreted )
+
+slip.hs:241:1: warning: [-Wincomplete-patterns]
+    Pattern match(es) are non-exhaustive
+    In an equation for ‘eval’:
+        Patterns not matched:
+            [] (Lbool _)
+            [] (Lvar _)
+            [] (Ltest _ _ _)
+            [] (Lfob _ _)
+            ...
+    |
+241 | eval _ (Lnum n) = Vnum n
+    | ^^^^^^^^^^^^^^^^^^^^^^^^
+Ok, one module loaded.
+ghci> run "exemples.slip"
+[2,*** Exception: slip.hs:241:1-24: Non-exhaustive patterns in function eval
+
+ghci> 
+\end{verbatim}
+}
+
+Les avertissements et l'exception levée sont dus au fait que le code
+a besoin de vos soins.  Le code que vous soumettez ne devrait pas souffrir
+de tels avertissements, et l'appel à \texttt{run} devrait renvoyer la liste
+des valeurs décrites en commentaires dans le fichier d'exemples.
+
+\section{À faire}
+
+Vous allez devoir compléter l'implantation de ce langage, c'est à dire
+compléter \id{s2l} et \id{eval}.
+
+Vous devez aussi fournir un fichier \texttt{tests.slip}, similaire
+à \texttt{exemples.slip}, mais qui contient au moins 5 tests que \emph{vous}
+avez écrits (avec en commentaire la valeur de retour que vous pensez devrait
+être renvoyée).  Les tests sont évalués sur les critères suivants:
+\begin{itemize}
+\item Ils doivent bien sûr être corrects.
+\item Ils doivent être suffisamment différents les uns des autres (et des
+  exemples fournis) pour détecter des erreurs différentes.
+\item Votre implantation de Slip doit les exécuter correctement.
+\end{itemize}
+
+\subsection{Recommendations}
+
+Je recommande de faire ce travail ``en largeur'' plutôt qu'en profondeur:
+compléter les fonctions peu à peu, pendant que vous avancez dans des
+exemples de code Slip simples plutôt que d'essayer de compléter tout
+\id{s2l} avant de commencer à attaquer la suite.
+Ceci dit, libre à vous de choisir l'ordre qui vous plaît.
+
+De même je vous recommande fortement de travailler en binôme
+(\url{https://fr.wikipedia.org/wiki/Programmation_en_bin\%C3\%B4me}) plutôt
+que de vous diviser le travail, vu que la difficulté est plus dans la
+compréhension que dans la quantité de code.
+
+Le code contient des indications des endroits que vous devez modifiez.
+Généralement cela signifie qu'il ne devrait pas être nécessaire de faire
+d'autres modifications, sauf ajouter des fonctions auxiliaires.  Vous pouvez
+aussi modifier le reste du code, si vous le voulez, mais il faudra alors
+justifier ces modifications dans votre rapport en expliquant pourquoi cela
+vous a semblé nécessaire.
+
+\subsection{Remise}
+
+Pour la remise, vous devez remettre 3 fichiers (\texttt{slip.hs},
+\texttt{tests.slip}, et \texttt{rapport.tex}) par la page Moodle (aussi
+nommé StudiUM) du cours.  Assurez-vous que le rapport compile correctement
+sur \texttt{ens.iro} (auquel vous pouvez vous connecter par SSH).
+
+\section{Détails}
+
+\begin{itemize}
+\item La note sera divisée comme suit: 30\% pour \id{s2l}, 25\% pour le
+  rapport, 15\% pour les tests et 30\% pour \id{eval}.
+\item Tout usage de matériel (code, texte, ...) emprunté à quelqu'un d'autre
+  (trouvé sur le web, ...) doit être dûment mentionné, sans quoi cela sera
+  considéré comme du plagiat.
+\item Le code ne doit en aucun cas dépasser 80 colonnes.
+\item Vérifiez la page web du cours, pour d'éventuels errata, et d'autres
+  indications supplémentaires.
+\item La note est basée d'une part sur des tests automatiques, d'autre part
+  sur la lecture du code, ainsi que sur le rapport.  Le critère le plus
+  important est que votre code doit se comporter de manière correcte.
+  Ensuite, vient la qualité du code: plus c'est simple, mieux c'est.
+  S'il y a beaucoup de commentaires, c'est généralement un symptôme que le
+  code n'est pas clair; mais bien sûr, sans commentaires le code (même
+  simple) est souvent incompréhensible.  L'efficacité de votre code est sans
+  importance, sauf si votre code utilise un algorithme vraiment
+  particulièrement ridiculement inefficace.
+\end{itemize}
+
+\end{document}
