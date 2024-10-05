@@ -191,6 +191,23 @@ data Lexp = Lnum Int             -- Constante entière.
 s2l :: Sexp -> Lexp
 s2l (Snum n) = Lnum n
 s2l (Ssym s) = Lvar s
+
+s2l (Ssym bool) = -- Lbool
+	case bool of
+		 "true" -> Lbool "true" 
+		 "false" -> Lbool "false" 
+		 "<" -> Lbool "<" 
+		 ">" -> Lbool ">" 
+		 "≤" -> Lbool "≤" 
+		 "≥" -> Lbool "≥" 
+		 "=" -> Lbool "="
+		 
+
+
+s2l (Snode (Ssym "if") [x, alorsY, sinonZ]) = -- ltest
+	ltest (s2l x) (s2l alorsY) (s2l sinonZ)
+
+
 -- ¡¡COMPLÉTER ICI!!
 s2l se = error ("Expression Psil inconnue: " ++ showSexp se)
 
@@ -235,10 +252,29 @@ env0 = let binop f op =
 ---------------------------------------------------------------------------
 -- Évaluateur                                                            --
 ---------------------------------------------------------------------------
+-- Fonction pour fouiller dans l'environnement
+verify :: VEnv -> var -> Val
+varify [] var = error("Environnement non défini avec la variable" ++ var)
+verify ((var', val'):xs) var  =
+	if var == var'
+	then val'
+	else verify xs var
+
 
 eval :: VEnv -> Lexp -> Value
 -- ¡¡ COMPLETER !!
 eval _ (Lnum n) = Vnum n
+
+eval Env Lbool bool = -- Bool
+	case verify Env bool of
+		Vbool bool' -> Vbool bool'
+
+eval Env (ltest x alorsY sinonZ) = -- Conditionnel
+	case eval Env x of
+		Vbool True -> eval Env alorsY
+		Vbool False -> eval Env sinonZ
+
+
                   
 ---------------------------------------------------------------------------
 -- Toplevel                                                              --
