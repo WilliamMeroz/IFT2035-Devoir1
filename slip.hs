@@ -193,11 +193,11 @@ s2l (Snum n) = Lnum n
 s2l (Ssym "true") = Lbool True
 s2l (Ssym "false") = Lbool False
 s2l (Ssym s) = Lvar s
-s2l (Snode (Ssym "if") [condition, condition_true, condition_false]) =
-    case condition of
-        Ssym "true" -> s2l condition_true
-        Ssym "false" -> s2l condition_false
-        Snode (Ssym func_name) arguments -> Lsend (Lvar func_name) (evaluate_arguments arguments)
+s2l (Snode (Ssym "if") [condition, condition_true, condition_false]) = Ltest (s2l condition) (s2l condition_true) (s2l condition_false)
+    -- case condition of
+    --     Ssym "true" -> s2l condition_true
+    --     Ssym "false" -> s2l condition_false
+    --     Snode (Ssym func_name) arguments -> Lsend (Lvar func_name) (evaluate_arguments arguments)
 
 --s2l (Snode (Ssym "fob") [func_arguments, func_body]) =
 --s2l (Snode (Ssym func_name) [Snode (Ssym "fob") [func_arguments, func_body]]) = Lvar func_name
@@ -270,7 +270,10 @@ eval :: VEnv -> Lexp -> Value
 eval _ (Lnum n) = Vnum n
 eval _ (Lbool b) = Vbool b
 eval env (Lvar s) = elookup env s
-
+eval env (Ltest condition condition_true condition_false) =
+    case condition of 
+        Lbool True -> eval env condition_true
+        Lbool False -> eval env condition_false
 
 ---------------------------------------------------------------------------
 -- Fonctions auxiliaires
