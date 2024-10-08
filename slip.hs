@@ -192,10 +192,36 @@ s2l :: Sexp -> Lexp
 s2l (Snum n) = Lnum n
 s2l (Ssym "true") = Lbool True
 s2l (Ssym "false") = Lbool False
-
 s2l (Ssym s) = Lvar s
+s2l (Snode (Ssym "if") [condition, condition_true, condition_false]) =
+    case condition of
+        Ssym "true" -> s2l condition_true
+        Ssym "false" -> s2l condition_false
+        Snode (Ssym func_name) arguments -> Lsend (Lvar func_name) (evaluate_arguments arguments)
+
+--s2l (Snode (Ssym "fob") [func_arguments, func_body]) =
+--s2l (Snode (Ssym func_name) [Snode (Ssym "fob") [func_arguments, func_body]]) = Lvar func_name
+-- s2l Snode (Ssym "if") [Snode condition, ]
 -- ¡¡COMPLÉTER ICI!!
 s2l se = error ("Expression Psil inconnue: " ++ showSexp se)
+
+
+evaluate_arguments :: [Sexp] -> [Lexp]
+evaluate_arguments [] = []
+evaluate_arguments (argument : arguments) = s2l argument : evaluate_arguments arguments
+
+-- Exemples:
+-- (+ 2 3) ==> Snode (Ssym "+")
+--                   [Snum 2, Snum 3]
+--
+-- (/ (* (- 68 32) 5) 9)
+--     ==>
+-- Snode (Ssym "/")
+--       [Snode (Ssym "*")
+--              [Snode (Ssym "-")
+--                     [Snum 68, Snum 32],
+--               Snum 5],
+--        Snum 9]
 
 ---------------------------------------------------------------------------
 -- Représentation du contexte d'exécution                                --
@@ -243,7 +269,16 @@ eval :: VEnv -> Lexp -> Value
 -- ¡¡ COMPLETER !!
 eval _ (Lnum n) = Vnum n
 eval _ (Lbool b) = Vbool b
-                  
+eval env (Lvar s) = elookup env s
+
+
+---------------------------------------------------------------------------
+-- Fonctions auxiliaires
+---------------------------------------------------------------------------
+elookup :: VEnv -> Var -> Value
+elookup [] v = error ("Environnement non défini avec la variable" ++ v)
+elookup ((var', val'):xs) var =
+    if var == var' then val' else elookup xs var
 ---------------------------------------------------------------------------
 -- Toplevel                                                              --
 ---------------------------------------------------------------------------
@@ -255,7 +290,7 @@ evalSexp = eval env0 . s2l
 -- l'autre, et renvoie la liste des valeurs obtenues.
 run :: FilePath -> IO ()
 run filename =
-    do inputHandle <- openFile filename ReadMode 
+    do inputHandle <- openFile filename ReadMode
        hSetEncoding inputHandle utf8
        s <- hGetContents inputHandle
        (hPutStr stdout . show)
