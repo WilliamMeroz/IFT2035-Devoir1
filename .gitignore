@@ -1,1 +1,6 @@
 test.slip
+rapport/rapport.aux
+rapport/rapport.fdb_latexmk
+rapport.fls
+rapport.log
+.DS_Store
