@@ -292,10 +292,10 @@ eval env (Llet var exp1 exp2) =
     in eval env2 exp2
 
 eval env (Lfix assignations exp1) =
-    let evalAssign [] = []
-        evalAssign ((var, exp):xs) = (var, eval env exp) : evalAssign xs
-        evalAssign _ = error "Erreur dans la liste d'assignations"
-        env2 = evalAssign assignations ++ env
+    let Lexp2val [] = []
+        Lexp2val ((var, exps):xs) = (var, eval env exps) : Lexp2val xs
+        Lexp2val _ = error "Erreur dans la liste d'assignations"
+        env2 = Lexp2val assignations ++ env -- on concatène les environnements
     in eval env2 exp1
 
 
