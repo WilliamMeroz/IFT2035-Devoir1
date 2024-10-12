@@ -203,6 +203,17 @@ s2l (Snode (Ssym "if") [condition, condition_true, condition_false]) = Ltest (s2
 --s2l (Snode (Ssym func_name) [Snode (Ssym "fob") [func_arguments, func_body]]) = Lvar func_name
 -- s2l Snode (Ssym "if") [Snode condition, ]
 -- ¡¡COMPLÉTER ICI!!
+
+s2l (Snode (Ssym "let") [Snode (Ssym x) [exp1, exp2]]) = -- ex: let x = (2) in (x+1)
+Llet x (s2l exp1) (s2l exp2)
+
+
+s2l (Snode (Ssym "fix") [Snode _ assignations, exp1]) = -- ex: fix ((x = 2) (y = 3)) in (x + y)
+    let fixing [] = []
+        fixing (Snode (Ssym var) [val] : xs) = (var, s2l val) : fixing xs
+        fixing _ = error "Erreur dans la liste d'assignations"
+    in Lfix (fixing assignations) (s2l exp1)
+
 s2l se = error ("Expression Psil inconnue: " ++ showSexp se)
 
 
@@ -274,6 +285,19 @@ eval env (Ltest condition condition_true condition_false) =
     case condition of 
         Lbool True -> eval env condition_true
         Lbool False -> eval env condition_false
+
+eval env (Llet var exp1 exp2) =
+    let valExp1 = eval env exp1
+        env2 = (var, valExp1) : env
+    in eval env2 exp2
+
+eval env (Lfix assignations exp1) =
+    let Lexp2val [] = []
+        Lexp2val ((var, exps):xs) = (var, eval env exps) : Lexp2val xs
+        Lexp2val _ = error "Erreur dans la liste d'assignations"
+        env2 = Lexp2val assignations ++ env -- on concatène les environnements
+    in eval env2 exp1
+
 
 ---------------------------------------------------------------------------
 -- Fonctions auxiliaires
