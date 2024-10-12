@@ -4,3 +4,4 @@ rapport/rapport.fdb_latexmk
 rapport.fls
 rapport.log
 .DS_Store
+rapport/rapport.synctex.gz
