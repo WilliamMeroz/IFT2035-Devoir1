@@ -6,7 +6,7 @@
 
 ((fob (x) x) 2)                         ; ↝ 2
 
-(((fob (x) (fob (y) (* x y)))
+(((fob (x y) (fob (y) (* x y)))
   3)
  5)                                     ; ↝ 15
 

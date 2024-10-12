@@ -1,5 +1,6 @@
 -- TP-1  --- Implantation d'une sorte de Lisp          -*- coding: utf-8 -*-
 {-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 --
 -- Ce fichier défini les fonctionalités suivantes:
 -- - Analyseur lexical
@@ -14,6 +15,7 @@
 import Text.ParserCombinators.Parsec -- Bibliothèque d'analyse syntaxique.
 import Data.Char                -- Conversion de Chars de/vers Int et autres.
 import System.IO                -- Pour stdout, hPutStr
+import Debug.Trace
 
 ---------------------------------------------------------------------------
 -- La représentation interne des expressions de notre language           --
@@ -194,18 +196,25 @@ s2l (Ssym "true") = Lbool True
 s2l (Ssym "false") = Lbool False
 s2l (Ssym s) = Lvar s
 s2l (Snode (Ssym "if") [condition, condition_true, condition_false]) = Ltest (s2l condition) (s2l condition_true) (s2l condition_false)
-    -- case condition of
-    --     Ssym "true" -> s2l condition_true
-    --     Ssym "false" -> s2l condition_false
-    --     Snode (Ssym func_name) arguments -> Lsend (Lvar func_name) (evaluate_arguments arguments)
+s2l (Snode (Ssym "fob") [Snode firstArgument restArguments, body]) =
+    Lfob (map extractVars (firstArgument : restArguments)) (s2l body)
+    where
+        extractVars :: Sexp -> Var
+        extractVars (Ssym x) = x
 
---s2l (Snode (Ssym "fob") [func_arguments, func_body]) =
---s2l (Snode (Ssym func_name) [Snode (Ssym "fob") [func_arguments, func_body]]) = Lvar func_name
--- s2l Snode (Ssym "if") [Snode condition, ]
--- ¡¡COMPLÉTER ICI!!
+-- LSend example
+s2l (Snode (Ssym func_name) arguments) =
+    Lsend (Lvar func_name) (map s2l arguments)
+
+s2l (Snode anonFunction rest) =
+    let x = s2l anonFunction
+    in case x of
+        Lfob _ _ -> Lsend x (map s2l rest)
+
+
 
 s2l (Snode (Ssym "let") [Snode (Ssym x) [exp1, exp2]]) = -- ex: let x = (2) in (x+1)
-Llet x (s2l exp1) (s2l exp2)
+    Llet x (s2l exp1) (s2l exp2)
 
 
 s2l (Snode (Ssym "fix") [Snode _ assignations, exp1]) = -- ex: fix ((x = 2) (y = 3)) in (x + y)
@@ -282,21 +291,30 @@ eval _ (Lnum n) = Vnum n
 eval _ (Lbool b) = Vbool b
 eval env (Lvar s) = elookup env s
 eval env (Ltest condition condition_true condition_false) =
-    case condition of 
+    case condition of
         Lbool True -> eval env condition_true
         Lbool False -> eval env condition_false
+
+eval env (Lsend func arguments) =
+        case eval env func of
+            Vbuiltin f -> f (map (eval env) arguments)
+            Vfob env arguments body -> Vnum 1
+
+
+eval env (Lfob arguments body) =
+    Vfob env arguments body
 
 eval env (Llet var exp1 exp2) =
     let valExp1 = eval env exp1
         env2 = (var, valExp1) : env
     in eval env2 exp2
 
-eval env (Lfix assignations exp1) =
-    let Lexp2val [] = []
-        Lexp2val ((var, exps):xs) = (var, eval env exps) : Lexp2val xs
-        Lexp2val _ = error "Erreur dans la liste d'assignations"
-        env2 = Lexp2val assignations ++ env -- on concatène les environnements
-    in eval env2 exp1
+-- eval env (Lfix assignations exp1) =
+--     let Lexp2val [] = []
+--         Lexp2val ((var, exps):xs) = (var, eval env exps) : Lexp2val xs
+--         Lexp2val _ = error "Erreur dans la liste d'assignations"
+--         env2 = Lexp2val assignations ++ env -- on concatène les environnements
+--     in eval env2 exp1
 
 
 ---------------------------------------------------------------------------
