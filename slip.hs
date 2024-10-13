@@ -294,6 +294,9 @@ eval env (Ltest condition condition_true condition_false) =
     case condition of
         Lbool True -> eval env condition_true
         Lbool False -> eval env condition_false
+        -- Lsend func arguments -> 
+        --     let funcEval = eval env condition
+        --     in 
 
 eval env (Lsend func arguments) =
         case eval env func of
