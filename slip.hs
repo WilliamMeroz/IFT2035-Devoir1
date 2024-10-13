@@ -298,7 +298,14 @@ eval env (Ltest condition condition_true condition_false) =
 eval env (Lsend func arguments) =
         case eval env func of
             Vbuiltin f -> f (map (eval env) arguments)
-            Vfob env arguments body -> Vnum 1
+            Vfob fenv params body -> -- If it's a user-defined function object
+                if length params /= length arguments
+                then error "Incorrect number of arguments"
+                else 
+                    let argVals = map (eval env) arguments
+                        newEnv = zip params argVals ++ fenv -- Extend environment with new bindings
+                    in eval newEnv body
+            _ -> error "Attempt to call a non-function"
 
 
 eval env (Lfob arguments body) =
