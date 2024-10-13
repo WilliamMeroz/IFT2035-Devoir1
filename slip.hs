@@ -1,5 +1,7 @@
 -- TP-1  --- Implantation d'une sorte de Lisp          -*- coding: utf-8 -*-
 {-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-overlapping-patterns #-}
 --
 -- Ce fichier défini les fonctionalités suivantes:
 -- - Analyseur lexical
@@ -73,7 +75,8 @@ integer = do c <- digit
 -- Les symboles sont constitués de caractères alphanumériques et de signes
 -- de ponctuations.
 pSymchar :: Parser Char
-pSymchar    = alphaNum <|> satisfy (\c -> c `elem` "!@$%^&*_+-=:|/?<>")
+pSymchar    = alphaNum <|> satisfy (\c -> not (isAscii c)
+                                          || c `elem` "!@$%^&*_+-=:|/?<>")
 pSymbol :: Parser Sexp
 pSymbol= do { s <- many1 (pSymchar);
               return (case parse integer "" s of
@@ -153,7 +156,6 @@ showSexp' (Snode h t) =
         showTail (e : es) =
             showChar ' ' . showSexp' e . showTail es
     in showChar '(' . showSexp' h . showTail t
-
 -- On peut utiliser notre pretty-printer pour la fonction générique "show"
 -- (utilisée par la boucle interactive de GHCi).  Mais avant de faire cela,
 -- il faut enlever le "deriving Show" dans la déclaration de Sexp.
@@ -191,26 +193,63 @@ data Lexp = Lnum Int             -- Constante entière.
 s2l :: Sexp -> Lexp
 s2l (Snum n) = Lnum n
 s2l (Ssym s) = Lvar s
-
-s2l (Ssym bool) = -- Lbool
-	case bool of
-		 "true" -> Lbool "true" 
-		 "false" -> Lbool "false" 
-		 "<" -> Lbool "<" 
-		 ">" -> Lbool ">" 
-		 "≤" -> Lbool "≤" 
-		 "≥" -> Lbool "≥" 
-		 "=" -> Lbool "="
-		 
+s2l (Ssym "true") = Lbool True   -- Ajout pour gérer 'true'
+s2l (Ssym "false") = Lbool False -- Ajout pour gérer 'false'
 
 
-s2l (Snode (Ssym "if") [x, alorsY, sinonZ]) = -- ltest
-	ltest (s2l x) (s2l alorsY) (s2l sinonZ)
+s2l (Snode (Ssym "if") [condExpr, thenExpr, elseExpr]) =
+    Ltest (s2l condExpr) (s2l thenExpr) (s2l elseExpr)
+
+-- Cas pour 'fob'
+s2l (Snode (Ssym "fob") [paramsSexp, body]) =
+    let paramNames = extractParamNames paramsSexp
+    in Lfob paramNames (s2l body)
+  where
+    extractParamNames Snil = []
+    extractParamNames (Ssym s) = [s]
+    extractParamNames (Snode phead ptail) = map extractParam (phead : ptail)
+    extractParamNames _ = error "Paramètres invalides dans 'fob'"
+    
+    extractParam (Ssym s) = s
+    extractParam _ = error "Paramètre non symbolique dans 'fob'"
 
 
--- ¡¡COMPLÉTER ICI!!
-s2l se = error ("Expression Psil inconnue: " ++ showSexp se)
+-- Cas pour 'let'
+s2l (Snode (Ssym "let") [binding, body]) =
+    case binding of
+        Snode (Ssym var) [expr1] ->
+            Llet var (s2l expr1) (s2l body)
+        _ -> error "Format de binding invalide dans 'let'"
 
+-- Cas pour 'fix'
+s2l (Snode (Ssym "fix") [bindingsSexp, body]) =
+    let bindings = extractBindings bindingsSexp
+    in Lfix bindings (s2l body)
+  where
+    extractBindings :: Sexp -> [(Var, Lexp)]
+    extractBindings Snil = []
+    extractBindings (Snode bhead btail) = map extractBinding (bhead : btail)
+    extractBindings _ = error "Format de bindings invalide dans 'fix'"
+
+    extractBinding :: Sexp -> (Var, Lexp)
+    extractBinding (Snode varSexp [expr]) =
+        case varSexp of
+            Ssym var -> (var, s2l expr)
+            Snode (Ssym var) paramsSexp ->
+                let paramNames = [ s | Ssym s <- paramsSexp ]
+                    funcExpr = Lfob paramNames (s2l expr)
+                in (var, funcExpr)
+            _ -> error "Format de variable invalide dans 'fix'"
+    extractBinding _ = error "Format de binding invalide dans 'fix'"
+
+s2l (Snode func args) = Lsend (s2l func) (map s2l args)
+
+
+
+s2l se = error ("Expression Psil inconnue: " ++ showSexp se ++ "\nDebug: s2l reçu : " ++ show se)
+
+
+-- s2l (Snode (Ssym "+") [e1, e2]) = Lsend (Lvar "+") [s2l e1, s2l e2]
 ---------------------------------------------------------------------------
 -- Représentation du contexte d'exécution                                --
 ---------------------------------------------------------------------------
@@ -252,30 +291,66 @@ env0 = let binop f op =
 ---------------------------------------------------------------------------
 -- Évaluateur                                                            --
 ---------------------------------------------------------------------------
--- Fonction pour fouiller dans l'environnement
-verify :: VEnv -> var -> Val
-varify [] var = error("Environnement non défini avec la variable" ++ var)
-verify ((var', val'):xs) var  =
-	if var == var'
-	then val'
-	else verify xs var
-
 
 eval :: VEnv -> Lexp -> Value
--- ¡¡ COMPLETER !!
 eval _ (Lnum n) = Vnum n
+eval _ (Lbool b) = Vbool b
+eval env (Lvar v) = case lookup v env of
+    Just val -> val
+    Nothing -> error ("Variable inconnue: " ++ v)
 
-eval Env Lbool bool = -- Bool
-	case verify Env bool of
-		Vbool bool' -> Vbool bool'
-
-eval Env (ltest x alorsY sinonZ) = -- Conditionnel
-	case eval Env x of
-		Vbool True -> eval Env alorsY
-		Vbool False -> eval Env sinonZ
+eval env (Ltest condExpr thenExpr elseExpr) =
+    case eval env condExpr of
+        Vbool True -> eval env thenExpr
+        Vbool False -> eval env elseExpr
+        _ -> error "La condition d'un 'if' doit évaluer à un booléen"
 
 
-                  
+eval env (Lfob params body) = Vfob env params body
+
+eval env (Lsend funcExpr argExprs) =
+    let funcVal = eval env funcExpr
+        argVals = map (eval env) argExprs
+    in case funcVal of
+        Vbuiltin f -> f argVals
+        Vfob closureEnv params body ->
+            if length params /= length argVals
+            then error "Nombre d'arguments incorrect"
+            else let newEnv = zip params argVals ++ closureEnv
+                 in eval newEnv body
+        _ -> error "Tentative d'appeler une valeur non fonction"
+
+-- Cas pour 'Llet'
+eval env (Llet var expr1 expr2) =
+    let val = eval env expr1
+        newEnv = (var, val) : env
+    in eval newEnv expr2
+
+-- Cas pour 'Lfix'
+eval env (Lfix bindings expr) =
+    let recEnv = fixEnv bindings env
+    in eval recEnv expr
+
+eval _ _ = error "Expression inconnue"
+
+-- Fonction auxiliaire pour créer l'environnement récursif
+fixEnv :: [(Var, Lexp)] -> VEnv -> VEnv
+fixEnv bindings env =
+    let newEnv = [(var, eval newEnv expr) | (var, expr) <- bindings] ++ env
+    in newEnv
+
+
+
+
+-- Fonction pour rechercher une variable dans l'environnement.
+elookup :: VEnv -> String -> Value
+elookup [] var = error ("Variable " ++ var ++ " not found")
+elookup ((vname, vval):env) var
+    | vname == var = vval
+    | otherwise = elookup env var
+
+
+
 ---------------------------------------------------------------------------
 -- Toplevel                                                              --
 ---------------------------------------------------------------------------
