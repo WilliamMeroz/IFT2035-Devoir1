@@ -10,6 +10,6 @@
   3)
  5)                                     ; ↝ 15
 
-(fix (((even x)  (if (=x  0) true  (odd  (- x 1))))
+(fix (((even x)  (if (= x 0) true  (odd  (- x 1))))
       ((odd x)   (if (= x 0) false (even (- x 1)))))
   (odd 42))                             ; ↝ False
