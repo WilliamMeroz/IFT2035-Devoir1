@@ -1,5 +1,7 @@
 -- TP-1  --- Implantation d'une sorte de Lisp          -*- coding: utf-8 -*-
 {-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-overlapping-patterns #-}
 --
 -- Ce fichier défini les fonctionalités suivantes:
 -- - Analyseur lexical
@@ -73,7 +75,8 @@ integer = do c <- digit
 -- Les symboles sont constitués de caractères alphanumériques et de signes
 -- de ponctuations.
 pSymchar :: Parser Char
-pSymchar    = alphaNum <|> satisfy (\c -> c `elem` "!@$%^&*_+-=:|/?<>")
+pSymchar    = alphaNum <|> satisfy (\c -> not (isAscii c)
+                                          || c `elem` "!@$%^&*_+-=:|/?<>")
 pSymbol :: Parser Sexp
 pSymbol= do { s <- many1 (pSymchar);
               return (case parse integer "" s of
@@ -153,7 +156,6 @@ showSexp' (Snode h t) =
         showTail (e : es) =
             showChar ' ' . showSexp' e . showTail es
     in showChar '(' . showSexp' h . showTail t
-
 -- On peut utiliser notre pretty-printer pour la fonction générique "show"
 -- (utilisée par la boucle interactive de GHCi).  Mais avant de faire cela,
 -- il faut enlever le "deriving Show" dans la déclaration de Sexp.
@@ -193,47 +195,63 @@ s2l (Snum n) = Lnum n
 s2l (Ssym "true") = Lbool True
 s2l (Ssym "false") = Lbool False
 s2l (Ssym s) = Lvar s
-s2l (Snode (Ssym "if") [condition, condition_true, condition_false]) = Ltest (s2l condition) (s2l condition_true) (s2l condition_false)
-    -- case condition of
-    --     Ssym "true" -> s2l condition_true
-    --     Ssym "false" -> s2l condition_false
-    --     Snode (Ssym func_name) arguments -> Lsend (Lvar func_name) (evaluate_arguments arguments)
-
---s2l (Snode (Ssym "fob") [func_arguments, func_body]) =
---s2l (Snode (Ssym func_name) [Snode (Ssym "fob") [func_arguments, func_body]]) = Lvar func_name
--- s2l Snode (Ssym "if") [Snode condition, ]
--- ¡¡COMPLÉTER ICI!!
-
-s2l (Snode (Ssym "let") [Snode (Ssym x) [exp1, exp2]]) = -- ex: let x = (2) in (x+1)
-Llet x (s2l exp1) (s2l exp2)
+s2l (Ssym "true") = Lbool True   -- Ajout pour gérer 'true'
+s2l (Ssym "false") = Lbool False -- Ajout pour gérer 'false'
 
 
-s2l (Snode (Ssym "fix") [Snode _ assignations, exp1]) = -- ex: fix ((x = 2) (y = 3)) in (x + y)
-    let fixing [] = []
-        fixing (Snode (Ssym var) [val] : xs) = (var, s2l val) : fixing xs
-        fixing _ = error "Erreur dans la liste d'assignations"
-    in Lfix (fixing assignations) (s2l exp1)
+s2l (Snode (Ssym "if") [condExpr, thenExpr, elseExpr]) =
+    Ltest (s2l condExpr) (s2l thenExpr) (s2l elseExpr)
 
-s2l se = error ("Expression Psil inconnue: " ++ showSexp se)
+-- Cas pour 'fob'
+s2l (Snode (Ssym "fob") [paramsSexp, body]) =
+    let paramNames = extractParamNames paramsSexp
+    in Lfob paramNames (s2l body)
+  where
+    extractParamNames Snil = []
+    extractParamNames (Ssym s) = [s]
+    extractParamNames (Snode phead ptail) = map extractParam (phead : ptail)
+    extractParamNames _ = error "Paramètres invalides dans 'fob'"
+    
+    extractParam (Ssym s) = s
+    extractParam _ = error "Paramètre non symbolique dans 'fob'"
 
 
-evaluate_arguments :: [Sexp] -> [Lexp]
-evaluate_arguments [] = []
-evaluate_arguments (argument : arguments) = s2l argument : evaluate_arguments arguments
+-- Cas pour 'let'
+s2l (Snode (Ssym "let") [binding, body]) =
+    case binding of
+        Snode (Ssym var) [expr1] ->
+            Llet var (s2l expr1) (s2l body)
+        _ -> error "Format de binding invalide dans 'let'"
 
--- Exemples:
--- (+ 2 3) ==> Snode (Ssym "+")
---                   [Snum 2, Snum 3]
---
--- (/ (* (- 68 32) 5) 9)
---     ==>
--- Snode (Ssym "/")
---       [Snode (Ssym "*")
---              [Snode (Ssym "-")
---                     [Snum 68, Snum 32],
---               Snum 5],
---        Snum 9]
+-- Cas pour 'fix'
+s2l (Snode (Ssym "fix") [bindingsSexp, body]) =
+    let bindings = extractBindings bindingsSexp
+    in Lfix bindings (s2l body)
+  where
+    extractBindings :: Sexp -> [(Var, Lexp)]
+    extractBindings Snil = []
+    extractBindings (Snode bhead btail) = map extractBinding (bhead : btail)
+    extractBindings _ = error "Format de bindings invalide dans 'fix'"
 
+    extractBinding :: Sexp -> (Var, Lexp)
+    extractBinding (Snode varSexp [expr]) =
+        case varSexp of
+            Ssym var -> (var, s2l expr)
+            Snode (Ssym var) paramsSexp ->
+                let paramNames = [ s | Ssym s <- paramsSexp ]
+                    funcExpr = Lfob paramNames (s2l expr)
+                in (var, funcExpr)
+            _ -> error "Format de variable invalide dans 'fix'"
+    extractBinding _ = error "Format de binding invalide dans 'fix'"
+
+s2l (Snode func args) = Lsend (s2l func) (map s2l args)
+
+
+
+s2l se = error ("Expression Psil inconnue: " ++ showSexp se ++ "\nDebug: s2l reçu : " ++ show se)
+
+
+-- s2l (Snode (Ssym "+") [e1, e2]) = Lsend (Lvar "+") [s2l e1, s2l e2]
 ---------------------------------------------------------------------------
 -- Représentation du contexte d'exécution                                --
 ---------------------------------------------------------------------------
@@ -277,35 +295,64 @@ env0 = let binop f op =
 ---------------------------------------------------------------------------
 
 eval :: VEnv -> Lexp -> Value
--- ¡¡ COMPLETER !!
 eval _ (Lnum n) = Vnum n
 eval _ (Lbool b) = Vbool b
-eval env (Lvar s) = elookup env s
-eval env (Ltest condition condition_true condition_false) =
-    case condition of 
-        Lbool True -> eval env condition_true
-        Lbool False -> eval env condition_false
+eval env (Lvar v) = case lookup v env of
+    Just val -> val
+    Nothing -> error ("Variable inconnue: " ++ v)
 
-eval env (Llet var exp1 exp2) =
-    let valExp1 = eval env exp1
-        env2 = (var, valExp1) : env
-    in eval env2 exp2
-
-eval env (Lfix assignations exp1) =
-    let Lexp2val [] = []
-        Lexp2val ((var, exps):xs) = (var, eval env exps) : Lexp2val xs
-        Lexp2val _ = error "Erreur dans la liste d'assignations"
-        env2 = Lexp2val assignations ++ env -- on concatène les environnements
-    in eval env2 exp1
+eval env (Ltest condExpr thenExpr elseExpr) =
+    case eval env condExpr of
+        Vbool True -> eval env thenExpr
+        Vbool False -> eval env elseExpr
+        _ -> error "La condition d'un 'if' doit évaluer à un booléen"
 
 
----------------------------------------------------------------------------
--- Fonctions auxiliaires
----------------------------------------------------------------------------
-elookup :: VEnv -> Var -> Value
-elookup [] v = error ("Environnement non défini avec la variable" ++ v)
-elookup ((var', val'):xs) var =
-    if var == var' then val' else elookup xs var
+eval env (Lfob params body) = Vfob env params body
+
+eval env (Lsend funcExpr argExprs) =
+    let funcVal = eval env funcExpr
+        argVals = map (eval env) argExprs
+    in case funcVal of
+        Vbuiltin f -> f argVals
+        Vfob closureEnv params body ->
+            if length params /= length argVals
+            then error "Nombre d'arguments incorrect"
+            else let newEnv = zip params argVals ++ closureEnv
+                 in eval newEnv body
+        _ -> error "Tentative d'appeler une valeur non fonction"
+
+-- Cas pour 'Llet'
+eval env (Llet var expr1 expr2) =
+    let val = eval env expr1
+        newEnv = (var, val) : env
+    in eval newEnv expr2
+
+-- Cas pour 'Lfix'
+eval env (Lfix bindings expr) =
+    let recEnv = fixEnv bindings env
+    in eval recEnv expr
+
+eval _ _ = error "Expression inconnue"
+
+-- Fonction auxiliaire pour créer l'environnement récursif
+fixEnv :: [(Var, Lexp)] -> VEnv -> VEnv
+fixEnv bindings env =
+    let newEnv = [(var, eval newEnv expr) | (var, expr) <- bindings] ++ env
+    in newEnv
+
+
+
+
+-- Fonction pour rechercher une variable dans l'environnement.
+elookup :: VEnv -> String -> Value
+elookup [] var = error ("Variable " ++ var ++ " not found")
+elookup ((vname, vval):env) var
+    | vname == var = vval
+    | otherwise = elookup env var
+
+
+
 ---------------------------------------------------------------------------
 -- Toplevel                                                              --
 ---------------------------------------------------------------------------
