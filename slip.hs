@@ -195,9 +195,6 @@ s2l (Snum n) = Lnum n
 s2l (Ssym "true") = Lbool True
 s2l (Ssym "false") = Lbool False
 s2l (Ssym s) = Lvar s
-s2l (Ssym "true") = Lbool True   -- Ajout pour gérer 'true'
-s2l (Ssym "false") = Lbool False -- Ajout pour gérer 'false'
-
 
 s2l (Snode (Ssym "if") [condExpr, thenExpr, elseExpr]) =
     Ltest (s2l condExpr) (s2l thenExpr) (s2l elseExpr)
@@ -216,36 +213,38 @@ s2l (Snode (Ssym "fob") [paramsSexp, body]) =
     extractParam _ = error "Paramètre non symbolique dans 'fob'"
 
 
--- Cas pour 'let'
-s2l (Snode (Ssym "let") [binding, body]) =
-    case binding of
-        Snode (Ssym var) [expr1] ->
-            Llet var (s2l expr1) (s2l body)
-        _ -> error "Format de binding invalide dans 'let'"
+s2l (Snode (Ssym "let") [assignations, body]) = -- let assignations in body
+    case assignations of -- Pour chaque assignation
+        Snode (Ssym var) [e1] -> Llet var (s2l e1) (s2l body) -- Si assignations = Snode --> on retourne Llet avec var, e1 et body 
+        _ -> error "Assignations invalides"
 
--- Cas pour 'fix'
-s2l (Snode (Ssym "fix") [bindingsSexp, body]) =
-    let bindings = extractBindings bindingsSexp
-    in Lfix bindings (s2l body)
-  where
-    extractBindings :: Sexp -> [(Var, Lexp)]
-    extractBindings Snil = []
-    extractBindings (Snode bhead btail) = map extractBinding (bhead : btail)
-    extractBindings _ = error "Format de bindings invalide dans 'fix'"
 
-    extractBinding :: Sexp -> (Var, Lexp)
-    extractBinding (Snode varSexp [expr]) =
-        case varSexp of
-            Ssym var -> (var, s2l expr)
-            Snode (Ssym var) paramsSexp ->
-                let paramNames = [ s | Ssym s <- paramsSexp ]
-                    funcExpr = Lfob paramNames (s2l expr)
-                in (var, funcExpr)
-            _ -> error "Format de variable invalide dans 'fix'"
-    extractBinding _ = error "Format de binding invalide dans 'fix'"
+s2l (Snode (Ssym "fix") [defs, body]) = -- fix defs in body
+    let lDefs = case defs of -- pour chaque définitions
+            Snil -> []  -- cas liste vide
+            Snode x xs -> map extractor (x : xs)  -- si Snode, on extrait itérativement les définitions
+            _ -> error "Assignations invalides pour 'fix'"  -- autrement = erreur
+
+        -- Fonction pour extraire les assignations des définitions
+        extractor assignations = case assignations of
+            Snode varS [exp1] -> case varS of -- pour la var de Snode
+                Ssym var -> (var, s2l exp1)  -- si assignation simple --> retourne la variable et le Lexp de exp1
+                Snode (Ssym var) args ->  -- Si assignation avec plusieurs arguments (un Snode)
+
+                    -- Fonction pour extraire les noms des arguments
+                    let extractArgVars [] = []
+                        extractArgVars (Ssym x : xs) = x : extractArgVars xs -- si premier élément est un Ssym, on l'ajoute à la liste
+                        extractArgVars (_ : xs) = extractArgVars xs -- autrement, on passe à l'élément suivant
+                        argVar = extractArgVars args  -- On extrait les noms des arguments
+                        f = Lfob argVar (s2l exp1)  -- on construit fonction Lfob avec liste des noms d'arguments puis on transforme exp1 en Lexp
+                    in (var, f)  -- on retourne l'assignation
+                _ -> error "Variable invalide dans 'fix'"  -- autrement = erreur
+            _ -> error "Assingation invalide dans 'fix'"  -- format incorrect 
+    
+    in Lfix lDefs (s2l body)  -- On retourne un Lfix avec les définitions et le body
+
 
 s2l (Snode func args) = Lsend (s2l func) (map s2l args)
-
 
 
 s2l se = error ("Expression Psil inconnue: " ++ showSexp se ++ "\nDebug: s2l reçu : " ++ show se)
@@ -297,15 +296,13 @@ env0 = let binop f op =
 eval :: VEnv -> Lexp -> Value
 eval _ (Lnum n) = Vnum n
 eval _ (Lbool b) = Vbool b
-eval env (Lvar v) = case lookup v env of
-    Just val -> val
-    Nothing -> error ("Variable inconnue: " ++ v)
+eval env (Lvar var) = extractVal env var
 
-eval env (Ltest condExpr thenExpr elseExpr) =
-    case eval env condExpr of
-        Vbool True -> eval env thenExpr
-        Vbool False -> eval env elseExpr
-        _ -> error "La condition d'un 'if' doit évaluer à un booléen"
+eval env (Ltest eIf eThen eElse) = -- if e1 then e2 else e3
+    case eval env e1 of
+        Vbool True -> eval env e2
+        Vbool False -> eval env e3
+        _ -> error "La condition 'if' n'est pas booléen"
 
 
 eval env (Lfob params body) = Vfob env params body
@@ -322,35 +319,29 @@ eval env (Lsend funcExpr argExprs) =
                  in eval newEnv body
         _ -> error "Tentative d'appeler une valeur non fonction"
 
--- Cas pour 'Llet'
-eval env (Llet var expr1 expr2) =
-    let val = eval env expr1
-        newEnv = (var, val) : env
-    in eval newEnv expr2
-
--- Cas pour 'Lfix'
-eval env (Lfix bindings expr) =
-    let recEnv = fixEnv bindings env
-    in eval recEnv expr
-
-eval _ _ = error "Expression inconnue"
-
--- Fonction auxiliaire pour créer l'environnement récursif
-fixEnv :: [(Var, Lexp)] -> VEnv -> VEnv
-fixEnv bindings env =
-    let newEnv = [(var, eval newEnv expr) | (var, expr) <- bindings] ++ env
-    in newEnv
+eval env (Llet var e1 body) = --let var = 3 in body
+    let val1 = eval env e1
+        env2 = (var, val1) : env
+    in eval env2 body
 
 
+eval env (Lfix definitions body) = -- fix definitions in body
+    -- prend un (var, val), un env, et evalu la valeur + ajoute la variable à l'env
+    let addAssignations (var, val) accEnv = (var, eval newEnv val) : accEnv  
+        newEnv = foldr addAssignations env definitions -- nouvel env avec définitions évaliées
+    in eval newEnv body -- on évalue le body avec le nouvel env
 
+---------------------------------------------------------------------------
+-- fonctions ajoutées                                                    --
+---------------------------------------------------------------------------
 
--- Fonction pour rechercher une variable dans l'environnement.
-elookup :: VEnv -> String -> Value
-elookup [] var = error ("Variable " ++ var ++ " not found")
-elookup ((vname, vval):env) var
-    | vname == var = vval
-    | otherwise = elookup env var
-
+-- Fonction pour extraire la valeur d'une variable
+extractVal :: VEnv -> Var -> Value
+extractVal [] var = error("Variable" ++ var ++ "non définie")
+extractVal ((var', val'):xs) var  =
+    if var == var'
+    then val'
+    else extractVal xs var
 
 
 ---------------------------------------------------------------------------
