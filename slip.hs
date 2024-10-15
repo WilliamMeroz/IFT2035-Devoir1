@@ -196,8 +196,8 @@ s2l (Ssym "true") = Lbool True
 s2l (Ssym "false") = Lbool False
 s2l (Ssym s) = Lvar s
 
-s2l (Snode (Ssym "if") [condExpr, thenExpr, elseExpr]) =
-    Ltest (s2l condExpr) (s2l thenExpr) (s2l elseExpr)
+s2l (Snode (Ssym "if") [e1, e2, e3]) =
+    Ltest (s2l e1) (s2l e2) (s2l e3)
 
 -- Cas pour 'fob'
 s2l (Snode (Ssym "fob") [paramsSexp, body]) =
