@@ -189,42 +189,40 @@ data Lexp = Lnum Int             -- Constante entière.
 
 -- Première passe simple qui analyse une Sexp et construit une Lexp équivalente.
 s2l :: Sexp -> Lexp
+
+-- Un nombre litéral
 s2l (Snum n) = Lnum n
+
+-- Booléens litéraux
 s2l (Ssym "true") = Lbool True
 s2l (Ssym "false") = Lbool False
+
+-- Variables
 s2l (Ssym s) = Lvar s
 
+-- Condition avec keyword if
 s2l (Snode (Ssym "if") [e1, e2, e3]) =
     Ltest (s2l e1) (s2l e2) (s2l e3)
 
--- Cas pour 'fob'
-s2l (Snode (Ssym "fob") [paramsSexp, body]) =
-    let paramNames = extractParamNames paramsSexp
-    in Lfob paramNames (s2l body)
-  where
-    extractParamNames Snil = []
-    extractParamNames (Ssym s) = [s]
-    extractParamNames (Snode phead ptail) = map extractParam (phead : ptail)
-    extractParamNames _ = error "Paramètres invalides dans 'fob'"
-    
-    extractParam (Ssym s) = s
-    extractParam _ = error "Paramètre non symbolique dans 'fob'"
+-- fob
+s2l (Snode (Ssym "fob") [params, body]) =
+    let nomParams = getParamsFromSexp params
+    in Lfob nomParams (s2l body) -- On évalue le body de la fonction séparémment (probablement un Snode, la plupart du temps)
+
+s2l (Snode (Ssym "let") [declarations, body]) =
+    case declarations of -- Pour chaque assignation
+        Snode (Ssym nouvelleVariable) [expressions] -> Llet nouvelleVariable (s2l expressions) (s2l body) -- Si assignations = Snode --> on retourne Llet avec la nouvelle varialbe, l'expression et le body 
+        _ -> error "déclarations de variables invalides" -- On se rend ici uniquement si la syntaxe du let est mauvaise, sinon ça devrait marher
 
 
-s2l (Snode (Ssym "let") [assignations, body]) = -- let assignations in body
-    case assignations of -- Pour chaque assignation
-        Snode (Ssym var) [e1] -> Llet var (s2l e1) (s2l body) -- Si assignations = Snode --> on retourne Llet avec var, e1 et body 
-        _ -> error "Assignations invalides"
-
-
-s2l (Snode (Ssym "fix") [defs, body]) = -- fix defs in body
+s2l (Snode (Ssym "fix") [defs, body]) =
     let lDefs = case defs of -- pour chaque définitions
-            Snil -> []  -- cas liste vide
-            Snode x xs -> map extractor (x : xs)  -- si Snode, on extrait itérativement les définitions
-            _ -> error "Assignations invalides pour 'fix'"  -- autrement = erreur
+            Snil -> []  -- cas liste vide (vu dans énoncé)
+            Snode x xs -> map getDefinition (x : xs)  -- si Snode, on extrait itérativement les définitions
+            _ -> error "Erreur avec fix (sûrement mauvaise syntaxe)"  -- autrement = erreur
 
         -- Fonction pour extraire les assignations des définitions
-        extractor assignations = case assignations of
+        getDefinition assignations = case assignations of
             Snode varS [exp1] -> case varS of -- pour la var de Snode
                 Ssym var -> (var, s2l exp1)  -- si assignation simple --> retourne la variable et le Lexp de exp1
                 Snode (Ssym var) args ->  -- Si assignation avec plusieurs arguments (un Snode)
@@ -241,11 +239,35 @@ s2l (Snode (Ssym "fix") [defs, body]) = -- fix defs in body
     
     in Lfix lDefs (s2l body)  -- On retourne un Lfix avec les définitions et le body
 
-
-s2l (Snode func args) = Lsend (s2l func) (map s2l args)
-
+-- Lsend
+s2l (Snode func args) = Lsend (s2l func) (map s2l args) -- Si on voit un Snode avec aucun keyword (fix, let, etc), on évalue le corps de la fonction et les arguments
 
 s2l se = error ("Expression Psil inconnue: " ++ showSexp se ++ "\nDebug: s2l reçu : " ++ show se)
+
+-- Fonctions auxiliaires
+-- Utilisée pour obtenir une liste de paramètres à partir d'un Sexp
+getParamsFromSexp :: Sexp -> [Var]
+getParamsFromSexp Snil = []
+getParamsFromSexp (Ssym s) = [s]
+-- On devrait seulement entrer ici si on passe une expression en tant qu'arguments (Slip utilise call by value)
+getParamsFromSexp (Snode l1 l2) = map getParamFromSsym (l1 : l2)
+getParamsFromSexp _ = error "Erreur générale (paramètres invalides??)"
+
+-- Utilisé quand on à un Snode avec une liste d'arguments, plus simple d'utiliser une fonction à part que d'écrire le code directement dans getParamsFromSexp
+getParamFromSsym :: Sexp -> Var
+getParamFromSsym (Ssym s) = s
+getParamFromSsym _ = error "Erreur générale pour évaluation de paramètre (on est jamais sensé se rendre ici)"
+
+isParamList :: Sexp -> Bool
+isParamList Snil = True
+isParamList (Ssym _) = True
+isParamList (Snode s1 s2) = all isSym (s1 : s2)
+isParamList _ = False
+
+-- Vérifie si un Sexp est un symbole
+isSym :: Sexp -> Bool
+isSym (Ssym _) = True
+isSym _ = False
 
 
 -- s2l (Snode (Ssym "+") [e1, e2]) = Lsend (Lvar "+") [s2l e1, s2l e2]
