@@ -298,7 +298,7 @@ eval _ (Lnum n) = Vnum n
 eval _ (Lbool b) = Vbool b
 eval env (Lvar var) = extractVal env var
 
-eval env (Ltest eIf eThen eElse) = -- if e1 then e2 else e3
+eval env (Ltest e1 e2 e3) = -- if e1 then e2 else e3
     case eval env e1 of
         Vbool True -> eval env e2
         Vbool False -> eval env e3
