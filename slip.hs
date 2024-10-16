@@ -214,7 +214,7 @@ s2l (Snode (Ssym "let") [declarations, body]) =
         Snode (Ssym nouvelleVariable) [expressions] -> Llet nouvelleVariable (s2l expressions) (s2l body) -- Si assignations = Snode --> on retourne Llet avec la nouvelle varialbe, l'expression et le body 
         _ -> error "déclarations de variables invalides" -- On se rend ici uniquement si la syntaxe du let est mauvaise, sinon ça devrait marher
 
-
+-- Fix, bonne chance!
 s2l (Snode (Ssym "fix") [defs, body]) =
     let lDefs = case defs of -- pour chaque définitions
             Snil -> []  -- cas liste vide (vu dans énoncé)
@@ -234,8 +234,8 @@ s2l (Snode (Ssym "fix") [defs, body]) =
                         argVar = extractArgVars args  -- On extrait les noms des arguments
                         f = Lfob argVar (s2l exp1)  -- on construit fonction Lfob avec liste des noms d'arguments puis on transforme exp1 en Lexp
                     in (var, f)  -- on retourne l'assignation
-                _ -> error "Variable invalide dans 'fix'"  -- autrement = erreur
-            _ -> error "Assingation invalide dans 'fix'"  -- format incorrect 
+                _ -> error "Varialbe invalide"  -- autrement = erreur
+            _ -> error "Asignation invalde invalide dans"  -- format incorrect 
     
     in Lfix lDefs (s2l body)  -- On retourne un Lfix avec les définitions et le body
 
@@ -244,7 +244,7 @@ s2l (Snode func args) = Lsend (s2l func) (map s2l args) -- Si on voit un Snode a
 
 s2l se = error ("Expression Psil inconnue: " ++ showSexp se ++ "\nDebug: s2l reçu : " ++ show se)
 
--- Fonctions auxiliaires
+-- ==== Fonctions auxiliaires ====
 -- Utilisée pour obtenir une liste de paramètres à partir d'un Sexp
 getParamsFromSexp :: Sexp -> [Var]
 getParamsFromSexp Snil = []
@@ -257,18 +257,6 @@ getParamsFromSexp _ = error "Erreur générale (paramètres invalides??)"
 getParamFromSsym :: Sexp -> Var
 getParamFromSsym (Ssym s) = s
 getParamFromSsym _ = error "Erreur générale pour évaluation de paramètre (on est jamais sensé se rendre ici)"
-
-isParamList :: Sexp -> Bool
-isParamList Snil = True
-isParamList (Ssym _) = True
-isParamList (Snode s1 s2) = all isSym (s1 : s2)
-isParamList _ = False
-
--- Vérifie si un Sexp est un symbole
-isSym :: Sexp -> Bool
-isSym (Ssym _) = True
-isSym _ = False
-
 
 -- s2l (Snode (Ssym "+") [e1, e2]) = Lsend (Lvar "+") [s2l e1, s2l e2]
 ---------------------------------------------------------------------------
@@ -314,30 +302,37 @@ env0 = let binop f op =
 ---------------------------------------------------------------------------
 
 eval :: VEnv -> Lexp -> Value
+-- Retourne un nom litéral
 eval _ (Lnum n) = Vnum n
+
+-- Retourne un booléen litéral
 eval _ (Lbool b) = Vbool b
+
+-- Vérifier si la variable existe dans l'envrionnement et 
 eval env (Lvar var) = extractVal env var
 
+-- Condition if
 eval env (Ltest e1 e2 e3) = -- if e1 then e2 else e3
     case eval env e1 of
-        Vbool True -> eval env e2
-        Vbool False -> eval env e3
-        _ -> error "La condition 'if' n'est pas booléen"
+        Vbool True -> eval env e2 -- Si c'est true on retourne l'expression true
+        Vbool False -> eval env e3 -- Si c'est false on retourne l'expression false
+        _ -> error "la condition n'est pas true ou false après avoir été évaluée (Call by value)"
 
-
+-- Un fonction object. Rien de bien spécial
 eval env (Lfob params body) = Vfob env params body
 
-eval env (Lsend funcExpr argExprs) =
-    let funcVal = eval env funcExpr
-        argVals = map (eval env) argExprs
-    in case funcVal of
-        Vbuiltin f -> f argVals
-        Vfob closureEnv params body ->
-            if length params /= length argVals
-            then error "Nombre d'arguments incorrect"
-            else let newEnv = zip params argVals ++ closureEnv
+-- Lsend, good luck!!
+eval env (Lsend expression argOfExpression) =
+    let function = eval env expression
+        arguments = map (eval env) argOfExpression -- On évalue pour obtenir les arguments et la fonction qu'on appel
+    in case function of
+        Vbuiltin f -> f arguments -- La fonction est built in
+        Vfob corps arguments' body -> -- La fonction est pas built in, on doit s'assurer que le nombre d'arguments est bon et on doit les ajouter à l'environnement
+            if length arguments' /= length arguments
+            then error "Nombre d'arguments incorrect (ou possiblement syntaxe est pas correcte ??)"
+            else let newEnv = zip arguments' arguments ++ corps
                  in eval newEnv body
-        _ -> error "Tentative d'appeler une valeur non fonction"
+        _ -> error "Erreure générale, probablement une erreur de syntaxe"
 
 eval env (Llet var e1 body) = --let var = 3 in body
     let val1 = eval env e1
