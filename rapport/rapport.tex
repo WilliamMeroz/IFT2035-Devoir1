@@ -13,8 +13,7 @@ Problèmes, surprises, choix, options rejetées, etc.
 
 \section{Parfaire sa connaissance de Haskell}
 
-Haskell n'est pas un langage très intuitif à prime abord. Penser et déconstruire un problème par récursions semble être un défi de taille pour ceux qui n'y ont pas l'habitude. Mais à travers les différents problèmes rencontrés, notamment dans ce TP et les devoirs, en élargissant pas à pas notre sphère d'aisance, nous sommes arrivés à avoir une bonne prise en main de la logique du langage. Tel que mentionné dans le cours, il est possible (et souhaitable) de considérer un code comme une preuve mathématique, en établissant systématiquement le chemin des déductions qui partent du ou des types d'entrée jusqu'au type de sortie, et Haskell s'y prête grandement. En ayant en tête l'idée de preuve mathématique (notamment par induction), la pensée par récursion devient plus simple: on débute par le cas de base, puis par un cas $n$ et $n+1$ qui représentent les autres cas de figures. Penser de telle manière est pratique pour bien comprendre le fonctionnement des fonctions et pour anticiper les erreurs.
-Nous avons donc essayé de suivre cette démarche logique et systématique dans notre TP, bien que ce ne soit pas un muscle à l'usage familier.
+Haskell n'est pas un langage très intuitif à prime abord. Penser et déconstruire un problème par récursions semble être un défi de taille pour ceux qui n'y ont pas l'habitude. Mais à travers les différents problèmes rencontrés, notamment dans ce TP et les devoirs, en élargissant pas à pas notre sphère d'aisance, nous sommes arrivés à avoir une bonne prise en main de la logique du langage. Tel que mentionné dans le cours, il est possible (et souhaitable) de considérer un code comme une preuve mathématique, en établissant systématiquement le chemin des déductions qui partent du ou des types d'entrée jusqu'au type de sortie, et Haskell s'y prête grandement. En ayant en tête l'idée de preuve mathématique (notamment par induction), la pensée par récursion devient plus simple: on débute par le cas de base, puis par un cas $n$ et $n+1$ qui représentent les autres cas de figures. Penser de telle manière est pratique pour bien comprendre le fonctionnement des fonctions et pour anticiper les erreurs. Nous avons donc essayé de suivre cette démarche logique et systématique dans notre TP, bien que ce ne soit pas un muscle à l'usage familier.
 
 
 
@@ -32,7 +31,12 @@ Pour ce qui est du code donné, la longueur du fichier nous a d'abord parut inqu
 \section{Compléter le code fourni}
 
 
-Ainsi le problème bien opérationnalisé, nous avons simplement commencer par les cas de figure qui nous semblaient simples, à savoir, les booléens, qui sont syntaxiquement simples (avec deux choix: "$true$" ou "$false$") puis ceux qui débutaient par un symbole particulier ("$if$", "$fob$", "$let$", "$fix$"). [à développer]. Problème avec fob, et fix... Problème avec lsend...
+Ainsi le problème bien opérationnalisé, nous avons simplement commencer par les cas de figure qui nous semblaient simples, à savoir, les booléens, qui sont syntaxiquement simples (avec deux choix: "$true$" ou "$false$") puis ceux qui débutaient par un symbole particulier ("$if$", "$fob$", "$let$", "$fix$"). $if$ nous a semblé relativement trivial; nous avons trois expressions, une pour l'énoncé conditionnel, une pour la condition "true" et une pour la condition "false" et nous retournons un ltest avec chacune des expressions transformées en $Lexp$. Pour $let$, la transformation nous semblait aussi assez simple; on prend une assignation et un corps d'expression, puis nous retournons tout simplement un $Llet$ avec la variable assignée, la transformation de la valeur assignée et la transformation du corps de l'expression. La logique nous semblait similaire pour $Lfix$ mais de manière récursive sur un ensemble indéterminé d'assignations. Notre approche était de d'établir la logique des fonctions $s2l$ puis celle de $eval$ avant de tester. Notre méthode nous semblait bonne, mais nous nous sommes rendu compte en cours de route de son inéficacité. En relisant bien la données
+[Cas de Fob plus difficile].
+
+[sucre syntaxique} -> on aurait du le faire au début, on s'Est rendu compte en le lisant.
+
+[à développer]. Problème avec fob, et fix... Problème avec lsend...
 
 Nous pensions qu'une approche en largeur plutôt qu'en profondeur était une bonne stratégie telle que suggérée dans la donnée. 
 
