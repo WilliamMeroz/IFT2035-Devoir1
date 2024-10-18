@@ -3,13 +3,17 @@
 \usepackage[utf8]{inputenc}
 
 \title{Rapport TP 1}
-\author{Laurence Leblond & William Méroz-Moreau}
+\author{Laurence Leblond \\ William Méroz-Moreau}
 
 \begin{document}
+	\maketitle
+
 	Description de notre experience pour les points suivants: Problèmes, surprises,
 	choix, options rejetées, etc.
 
-	\section{Parfaire sa connaissance de Haskell}
+	\section{Problèmes rencontrés}
+
+	\subsection{Connaissance trop minime de Haskell}
 
 	Haskell n'est pas un langage très intuitif à prime abord. Penser et
 	déconstruire un problème par récursions semble être un défi de taille pour
@@ -25,18 +29,20 @@
 	figures. Penser de telle manière est pratique pour bien comprendre le fonctionnement
 	des fonctions et pour anticiper les erreurs. Nous avons donc essayé de suivre
 	cette démarche logique et systématique dans notre TP, bien que ce ne soit pas un
-	muscle à l'usage familier.
+	muscle à l'usage familier. En gardant ce train de penser, nous avons pu garder
+	en tête tous les scénarios possibles qui devaient être couverts, afin d'éviter
+	de rendre notre code, et de ce fait notre évaluateur, plus robuste.
 
-	\section{Lire et comprendre la donnée}
+	\subsection{Compréhension de la donnée}
 
-	Pour bien comprendre l'énoncé du TP, nous avons décidé de le lire chacun de notre
-	côté puis de se rencontrer pour résumer les différentes parties. En
-	déconstruisant le travail de la sorte, nous avons mieux compris les différentes
-	tâches que nous avions à faire. [développer]. Nous nous sommes rendu compte,
-	en cours de route, que nous avions interprété certaine partie d'une mauvaise manière
-	et que nous n'étions, au final, peut-être pas vraiment certain de ce que nous faisions.
+	Pour bien comprendre l'énoncé du TP, nous avons décidé de le lire chacun de
+	notre côté puis de se rencontrer pour résumer les différentes parties. En déconstruisant
+	le travail de la sorte, nous avons mieux compris les différentes tâches que
+	nous avions à faire. Il nous a d'abord été compliqué de comprendre les exemples
+	de code Slip donnés dans l'énoncé, la syntaxe Lisp étant nouvelle pour nous. Il
+	nous a également pris du temps à comprendre ce qui était demandé de nous.
 
-	\section{Lire, trouver et comprendre les parties importantes du code fourni}
+	\subsection{Lire, trouver et comprendre les parties importantes du code fourni}
 
 	Pour ce qui est du code donné, la longueur du fichier nous a d'abord parut inquiétante
 	et nous avons surévalué la tâche à faire. Mais en ayant bien défini les
@@ -63,7 +69,7 @@
 	plus simple. Nous comprenions qu'il n'était que question de quelle disposition
 	de symboles $Sexp$ donne telle disposition de symboles $Lexp$.
 
-	\section{Compléter le code fourni}
+	\subsection{Compléter le code fourni}
 
 	Ainsi le problème bien opérationnalisé, nous avons simplement commencer par
 	les cas de figure qui nous semblaient simples, à savoir, les booléens, qui sont
@@ -72,23 +78,87 @@
 	$if$ nous a semblé relativement trivial; nous avons trois expressions, une
 	pour l'énoncé conditionnel, une pour la condition "true" et une pour la condition
 	"false" et nous retournons un ltest avec chacune des expressions transformées en
-	$Lexp$. Pour $let$, la transformation nous semblait aussi assez simple; on
+	$Lexp$. Pour $l et$, la transformation nous semblait aussi assez simple; on
 	prend une assignation et un corps d'expression, puis nous retournons tout simplement
 	un $Llet$ avec la variable assignée, la transformation de la valeur assignée
 	et la transformation du corps de l'expression. La logique nous semblait similaire
 	pour $Lfix$ mais de manière récursive sur un ensemble indéterminé d'assignations.
 	Notre approche était de d'établir la logique des fonctions $s2l$ puis celle de
 	$eval$ avant de tester. Notre méthode nous semblait bonne, mais nous nous
-	sommes rendu compte en cours de route de son inéficacité. En relisant bien la données
-	[Cas de Fob plus difficile].
-
-	[sucre syntaxique] -> on aurait du le faire au début, on s'Est rendu compte en
-	le lisant.
+	sommes rendu compte en cours de route de son innéficacité.
 
 	[à développer]. Problème avec fob, et fix... Problème avec lsend...
 
-	Nous pensions qu'une approche en largeur plutôt qu'en profondeur était une
-	bonne stratégie telle que suggérée dans la donnée.
+	Nous pensions qu'une approche en largeur plutôt qu'en profondeur était une bonne
+	stratégie telle que suggérée dans la donnée.
 
 	intuition, test, vérification et recalibrage!
+
+	\section{Choix}
+
+	\subsection{Garder les implémentations de fonctions le plus court possible}
+
+	Nous avons tenté de garder les implémentations des différents paternes des fonctions
+	$s2l$ et $eval$ le plus court possible afin de ne pas surcharger l'évaluateur avec
+	trop de logique qui pourrait au final créer plus de bogues, et rendre ceux-ci
+	plus difficile à identifier. Le code Slip ayant une syntaxe et des fonctionnalités
+	assez simple, il est possible de déléguer beaucoup des tâches de l'analyse
+	syntaxique et de l'évaluation aux mêmes fonctions pour beaucoup de scénarios
+	différents. Par exemple, le code des fonctions $s2l$ et $eval$ pour les
+	$Lfob/Vfob$ et $Llet$ peuvent se résumer à quelques lignes. Par contre, cette
+	façon de travailler nous à causer du fil à retorde lors qu’est venu le temps d'implémenter
+	la fonctionnalité des $Lfix$. En effet, puisque nos autres fonctions étaient
+	autant dépourvues de fonctionnalité, il nous a fallu écrire beaucoup de code afin
+	d'extraire les assignations et les noms d'arguments afin de les ajouter dans leur
+	environnement. Ces traitements auraient peut-être pu être ajoutés dans les
+	fonctions $s2l$ et $eval$ des $Lfob$ directement afin d'éviter de sur
+	complexifier le code et mélanger les rôles des différents paternes.
+
+	\subsection{Ne pas respecter toutes les recommandations faites dans l'énoncé}
+	Nous avons commencé le TP en essayant de travailler le plus possible en binôme
+	afin de s'entre-aider à bien comprendre la logique que nous devions suivre
+	pour compléter le code. Au début du travail, ces heures passées à travailler
+	ensemble étaient utiles, mais, nous nous sommes rendus compte qu'il nous était
+	plus facile de se séparer l'implémentation en terme de fonctionnalité afin de
+	se laisser à chacun la possibilité de se plonger dans le code et réfléchir sur
+	son propre temps. Nous avons réaliser par contre que beaucoup de fonctionnalité
+	dépendent des autres (on peut seulement bien tester les $Lfob$ et $Vfob$ que
+	lorsque la fonctionnalité du $Lsend$ fonctionne bien, par exemple). Une autre recomendation
+	était de commencer par implémenter l'évaluation du sucre syntaxique pour la création
+	d'une nouvelle fonction anonyme. Après une multitude de tentatives d'implémenter
+	cette fonctionnalité, nous avons décider de procéder avec l'implémentation de tout
+	le code et de ensuite de soucier de l'implémentation du sucre syntaxique. Avec
+	le recul, nous avons réaliser que ce fut une erreur puisque l'implémentation du
+	sucre syntaxique après avoir écrit tout le reste du code est beaucoup plus difficile.
+	Plus précisément, il est difficile de faire la distinction entre un paterne de
+	$Lsend$ et un paterne relié au sucre syntaxique. Les 2 expressions sont très
+	similaires, avec des $Snode$ imbriqués de façons similaires, et il aurait
+	fallu modifier plusieurs parties du code pour le faire fonctionner
+	correctement. Malgré tout nos efforts, nous ne sommes pas parvenus à le faire
+	marcher correctement sans impacter le reste de la logique et créer des éffets
+	de bord non désirés. Si nous avions suivi la recomendation de l'énoncé en commençant
+	pas le sucre syntaxique. Nous n'aurions probablement pas eu ce problème.
+	\section{Options rejetées}
+	\section{Surprises}
+	\subsection{Gestion des environnements}
+	Nous ne nous attentions pas à ce que la gestion des environnements soit autant
+	complexe. Slip étant un langage avec une portée statique, nous nous attentions
+	à pouvoir simplement ajouter les données nécéssaires à l'environnement de base
+	$env0$ pour ensuite avoir accès à toute variable et sa valeur peut importe l'endroit
+	de l'appel de nos fonctions. Non seulement cette façon de penser démontre une
+	mauvaise compréhension du concept de portée statique, elle est également impossible
+	venant du fait que l'envrionnement $env0$ est immutable dans le code Haskell.
+	Nous avons dû, après avoir réalisé notre erreur, programmer les $Lfob$ et, plus
+	difficilement, les $Lfix$ afin qu'une « sauvegarde » de l'environnement dans
+	lequel la fonction a été crée soit faite et soit garder en mémoire dans les
+	$Lfob$. L'appel des fonctions avec $Lsend$ s'est fait sans trop de soucis une fois
+	que nous avions compris le processus à suivre.
+
+	\subsection{Importance du code avec faible couplage}
+	Nous nous sommes vites rendu compte de l'importance d'écrire du code robuste qui
+	pouvait être réutilisé pour chaque paternes que nous avons fais pour les fonctions
+	$s2l$ et $eval$. En effet, dépendamment du code Slip que nous essayons d'interpréter,
+	il est possible que toutes les options de $s2l$ ou $eval$ soient appelées pour
+	accomplir une tâche commune. Beaucoup de fonctions vont dépendre des sorties d'autres
+	fonctions. Si le code est bien fait, ces opérations devraient se faire sans réel DEV DEV DEV
 \end{document}
