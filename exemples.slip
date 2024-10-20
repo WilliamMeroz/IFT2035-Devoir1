@@ -1,12 +1,14 @@
 ;;; Quelques exemples.                  -*- mode: lisp-data; coding: utf-8 -*-
 
 ;; test1: XOR (A B)
-(fix ((XOR (fob (A B)(if A (if A false true)(if A true false)))))
-  (XOR true true)) ; ↝ False
+
+  (fix ((XOR (fob (A B)(if A (if A false true)(if A true false)))))
+    (XOR true true)) ; ↝ False
 
 ;; Test 2: Moyenne sur 5 nombres entiers
 ;; La division doit donner un entier.
-(fix ((moyenne (fob (a1 b2 b3 b4 b5) 
-(/ (+ a1 (+ b2 (+ b3 (+ b4 b5)))) 5))))
-  (moyenne 1 9 7 8 5)) ; ↝ 6
+
+  (fix ((moyenne (fob (a1 b2 b3 b4 b5) 
+  (/ (+ a1 (+ b2 (+ b3 (+ b4 b5)))) 5))))
+    (moyenne 1 9 7 8 5)) ; ↝ 6
 
