@@ -26,9 +26,9 @@
 	Penser de telle manière est pratique pour bien comprendre le fonctionnement
 	des fonctions et pour anticiper les erreurs. Nous avons donc essayé de suivre cette
 	démarche logique et systématique dans notre TP, bien que ce ne soit pas un
-	muscle à l'usage familier. En gardant ce train de penser, nous avons pu garder
-	en tête tous les scénarios possibles qui devaient être couverts, afin d'éviter
-	de rendre notre code, et de ce fait notre évaluateur, plus robuste.
+	muscle à l'usage familier. En suivant ce train de penser, nous avons pu garder
+	en tête les différents scénarios possibles qui devaient être couverts, afin de rendre
+	notre code, et de ce fait notre évaluateur, plus robuste.
 
 	\subsection{Compréhension de la donnée}
 
@@ -46,7 +46,7 @@
 	inquiétante et nous avons surévalué la tâche à faire. Mais en ayant bien défini
 	les sections à compléter grâce à notre synthèse de la donnée, nous avons
 	simplement considéré de gros bouts du code comme des boites noires pour nous
-	concentrer exclusivement sur $s2l$ et $eval$. [développer] Avoir travailler sur
+	concentrer exclusivement sur $s2l$ et $eval$. Avoir travaillé sur
 	la construction d'évaluateurs dans les différents devoirs nous a permis de comprendre
 	ce que nous devions faire dans $eval$ assez rapidement, mais nous avions
 	quelques doutes sur la manière dont fonctionnait $s2l$ et comment était défini
@@ -56,7 +56,7 @@
 	$Ltest$, $Lfob$, $Lsend$, $Llet$ et $Lfix$. Puis pour $eval$, il fallait prendre
 	ces derniers cas et les transformer en $Vnum$, $Vbool$, $Vbuiltin$ et $Vfob$.
 	Avant de commencer à coder, nous voulions comprendre la logique des transformations
-	(et particulièrement $s2l$). Les cas les plus simples étaient ceux $Snum$ et
+	(et particulièrement $s2l$). Les cas les plus simples étaient ceux des $Snum$ et
 	des $Ssym$ que nous comprenions assez bien, mais pour les autres, il nous
 	semblait très difficile de trouver un point de départ. Que doit faire $s2l$ au
 	juste? Comment sera t-il possible d'interpréter un $sexp$ en $lexp$ pour des
@@ -65,14 +65,13 @@
 	nous a conduit à considérer le travail comme beaucoup plus difficile qu'il ne
 	l'était. Lorsque nous avions bien intériorisé le fait que $s2l$ manipule tout simplement
 	des arbres syntaxique, le problème nous est apparu plus simple. Nous comprenions
-	qu'il n'était que question de quelle disposition de symboles $Sexp$ donne telle
+	qu'il n'était que question de savoir quelle disposition de symboles $Sexp$ donne telle
 	disposition de symboles $Lexp$.
 
 	\subsection{Compléter le code fourni}
 
-	Ainsi le problème bien opérationnalisé, nous avons simplement commencer par les
-	cas de figure qui nous semblaient simples, à savoir, les booléens, qui sont
-	syntaxiquement simples (avec deux choix: "$true$" ou "$false$") puis ceux qui débutaient
+	Ainsi le problème bien opérationnalisé, nous avons simplement commencé par les
+	cas de figure qui nous semblaient simples, à savoir, les booléens, qui ont une syntaxe claire (avec deux choix: "$true$" ou "$false$") puis ceux qui débutaient
 	par un symbole particulier ("$if$", "$fob$", "$let$", "$fix$"). $if$ nous a semblé
 	relativement trivial; nous avons trois expressions, une pour l'énoncé conditionnel,
 	une pour la condition "true" et une pour la condition "false" et nous
