@@ -1,15 +1,58 @@
-;;; Quelques exemples.                  -*- mode: lisp-data; coding: utf-8 -*-
+; Simple implémentation d'une porte logique OU EXCLUSIF.
+(fix ((XOR (fob (A B)
+          (if A
+             (if A false true)
+              (if A true false)))))
+     (XOR true true))                  ; ↝ False
 
-2                                       ; ↝ 2
-+                                       ; ↝ <primitive>
-(+ 2 4)                                 ; ↝ 6
+; Fibonacci: implémenté récursivement avec 20 comme argument, pour
+; montrer que la récursion et les fonctions imbriqués fonctionnent bien.
+(fix ((fib (fob (n) (if (≤ n 1) n 
+  (+ (fib (- n 1)) (fib (- n 2))))))) (fib 20)) ; ↝ 6765
 
-((fob (x) x) 2)                         ; ↝ 2
+; Grand arbre de condition, pour montrer que 
+; les expressions de très grand taille sont bien supportées.
+(if (> 10 5) ; ↝ true
+    (if (< 7 3) ; ↝ false
+        (if (= 2 2)
+            100
+            (if (< 9 2) 200 300))
+        (if (> 5 1) ; ↝ true
+            (if (≤ 6 6) ; ↝ true
+                (if (> 8 4) 400 500) ; ↝ true, On retourne 400
+                600)
+            700))
+    (if (< 10 20)
+        (if (≥ 15 15)
+            800
+            (if (< 3 2) 900 1000))
+        1100))
 
-(((fob (x) (fob (y) (* x y)))
-  3)
- 5)                                     ; ↝ 15
+; Test pour prouver que la portée du langage est statique.
+; On déclare une variable x = 10 et une autre x = 5
+; La fonction f utilise le premier x pour le (+ x y) et non le deuxième.
+; Si la portée était dynamique, le code utiliserait le deuxième x et la valeur
+; de retour serait 7.
+(let (x 10)
+    (let (f (fob (y) (+ x y)))
+        (let (x 5)
+            (f 2)))) ; ↝ 12
 
-(fix (((even x)  (if (= x 0) true  (odd  (- x 1))))
-      ((odd x)   (if (= x 0) false (even (- x 1)))))
-  (odd 42))                             ; ↝ False
+; Test pour montrer tous les mots clés
+; et autres fonctionnalités du langage
+; utilisés ensemble.
+; Le test calcul (5 + 10) + le factoriel de 3 (6) = 21
+; Le test déclare des fonctions imbriquées, utilise des variables
+; qui ont le même noms à des endroits différents, 
+; la fonction add utilise le x = 10 et est passée la variable x = 5 comme argument
+; Nous utilisons également des conditions avec if.
+(let (x 10)
+    (let (add (fob (y) (+ x y)))
+        (let (factVariable (fix ((factFonction (fob (n)
+                                         (if (≤ n 1)
+                                             1
+                                             (* n (factFonction (- n 1)))))))
+                       factFonction))
+            (let (x 5)
+                (let (result (+ (add x) (factVariable 3)))
+                    result)))))
