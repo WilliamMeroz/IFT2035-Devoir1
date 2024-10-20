@@ -187,7 +187,7 @@ data Lexp = Lnum Int             -- Constante entière.
           | Lfix [(Var, Lexp)] Lexp
           deriving (Show, Eq)
 
--- Première passe simple qui analyse une Sexp et construit une Lexp équivalente.
+-- Première passe simple qui analyse une Sexp et construit une Lexp équivalente
 s2l :: Sexp -> Lexp
 
 -- Un nombre litéral
@@ -207,58 +207,66 @@ s2l (Snode (Ssym "if") [e1, e2, e3]) =
 -- fob
 s2l (Snode (Ssym "fob") [params, body]) =
     let nomParams = getParamsFromSexp params
-    in Lfob nomParams (s2l body) -- On évalue le body de la fonction séparémment (probablement un Snode, la plupart du temps)
+    in Lfob nomParams (s2l body) --On évalue le body de la fonction séparémment
+                                 --(probablement un Snode, la plupart du temps)
 
 s2l (Snode (Ssym "let") [declarations, body]) =
-    case declarations of -- Pour chaque assignation
-        Snode (Ssym nouvelleVariable) [expressions] -> Llet nouvelleVariable (s2l expressions) (s2l body) -- Si assignations = Snode --> on retourne Llet avec la nouvelle varialbe, l'expression et le body 
-        _ -> error "déclarations de variables invalides" -- On se rend ici uniquement si la syntaxe du let est mauvaise, sinon ça devrait marher
+    case declarations of
+        Snode (Ssym nouvelleVariable) [expressions] -> 
+            Llet nouvelleVariable (s2l expressions) (s2l body) 
+        _ -> error "déclarations de variables invalides" 
 
 -- Fix, bonne chance!
 s2l (Snode (Ssym "fix") [defs, body]) =
     let lDefs = case defs of -- pour chaque définitions
             Snil -> []  -- cas liste vide (vu dans énoncé)
-            Snode x xs -> map getDefinition (x : xs)  -- si Snode, on extrait itérativement les définitions
-            _ -> error "Erreur avec fix (sûrement mauvaise syntaxe)"  -- autrement = erreur
+            Snode x xs -> map getDefinition (x : xs)
+            _ -> error "Erreur avec fix (sûrement mauvaise syntaxe)"
 
         -- Fonction pour extraire les assignations des définitions
         getDefinition assignations = case assignations of
-            Snode varS [exp1] -> case varS of -- pour la var de Snode
-                Ssym var -> (var, s2l exp1)  -- si assignation simple --> retourne la variable et le Lexp de exp1
-                Snode (Ssym var) args ->  -- Si assignation avec plusieurs arguments (un Snode)
+            Snode varS [exp1] -> case varS of
+                Ssym var -> (var, s2l exp1)
+                Snode (Ssym var) args ->  -- plusieurs arguments (un Snode)
 
                     -- Fonction pour extraire les noms des arguments
                     let extractArgVars [] = []
-                        extractArgVars (Ssym x : xs) = x : extractArgVars xs -- si premier élément est un Ssym, on l'ajoute à la liste
-                        extractArgVars (_ : xs) = extractArgVars xs -- autrement, on passe à l'élément suivant
-                        argVar = extractArgVars args  -- On extrait les noms des arguments
-                        f = Lfob argVar (s2l exp1)  -- on construit fonction Lfob avec liste des noms d'arguments puis on transforme exp1 en Lexp
+                        extractArgVars (Ssym x : xs) = x : extractArgVars xs 
+                        extractArgVars (_ : xs) = extractArgVars xs 
+                        argVar = extractArgVars args  -- On extrait args
+                        f = Lfob argVar (s2l exp1) 
                     in (var, f)  -- on retourne l'assignation
-                _ -> error "Varialbe invalide"  -- autrement = erreur
+                _ -> error "Varialbe invalide"
             _ -> error "Asignation invalde invalide dans"  -- format incorrect 
     
-    in Lfix lDefs (s2l body)  -- On retourne un Lfix avec les définitions et le body
+    in Lfix lDefs (s2l body)  -- On retourne un Lfix avec les défs et body
 
 -- Lsend
-s2l (Snode func args) = Lsend (s2l func) (map s2l args) -- Si on voit un Snode avec aucun keyword (fix, let, etc), on évalue le corps de la fonction et les arguments
+-- Si on voit un Snode avec aucun keyword (fix, let, etc), 
+-- on évalue le corps de la fonction et les arguments
+s2l (Snode func args) = Lsend (s2l func) (map s2l args) 
 
-s2l se = error ("Expression Psil inconnue: " ++ showSexp se ++ "\nDebug: s2l reçu : " ++ show se)
+s2l se = 
+    error ("Expression Psil inconnue: " ++ showSexp se ++ 
+          "\nDebug: s2l reçu : " ++ show se)
 
 -- ==== Fonctions auxiliaires ====
 -- Utilisée pour obtenir une liste de paramètres à partir d'un Sexp
 getParamsFromSexp :: Sexp -> [Var]
 getParamsFromSexp Snil = []
 getParamsFromSexp (Ssym s) = [s]
--- On devrait seulement entrer ici si on passe une expression en tant qu'arguments (Slip utilise call by value)
+-- On devrait seulement entrer ici si on passe
+-- une expression en tant qu'arguments (Slip utilise call by value)
 getParamsFromSexp (Snode l1 l2) = map getParamFromSsym (l1 : l2)
-getParamsFromSexp _ = error "Erreur générale (paramètres invalides??)"
+getParamsFromSexp _ = error "Erreur générale (paramètres invalides? )"
 
--- Utilisé quand on à un Snode avec une liste d'arguments, plus simple d'utiliser une fonction à part que d'écrire le code directement dans getParamsFromSexp
+-- Utilisé quand on à un Snode avec une liste d'arguments,
+-- plus simple d'utiliser une fonction à part que d'écrire
+-- le code directement dans getParamsFromSexp
 getParamFromSsym :: Sexp -> Var
 getParamFromSsym (Ssym s) = s
-getParamFromSsym _ = error "Erreur générale pour évaluation de paramètre (on est jamais sensé se rendre ici)"
+getParamFromSsym _ = error "Erreur générale pour évaluation de paramètre"
 
--- s2l (Snode (Ssym "+") [e1, e2]) = Lsend (Lvar "+") [s2l e1, s2l e2]
 ---------------------------------------------------------------------------
 -- Représentation du contexte d'exécution                                --
 ---------------------------------------------------------------------------
@@ -308,28 +316,32 @@ eval _ (Lnum n) = Vnum n
 -- Retourne un booléen litéral
 eval _ (Lbool b) = Vbool b
 
--- Vérifier si la variable existe dans l'envrionnement et 
+-- Vérifier si la variable existe dans l'envrionnement
 eval env (Lvar var) = extractVal env var
 
 -- Condition if
 eval env (Ltest e1 e2 e3) = -- if e1 then e2 else e3
     case eval env e1 of
-        Vbool True -> eval env e2 -- Si c'est true on retourne l'expression true
-        Vbool False -> eval env e3 -- Si c'est false on retourne l'expression false
-        _ -> error "la condition n'est pas true ou false après avoir été évaluée (Call by value)"
+        Vbool True -> eval env e2
+        Vbool False -> eval env e3
+        _ -> error ("la condition n'est pas true ou false après" ++
+                    "avoir été évaluée (Call by value)")
 
--- Un fonction object. Rien de bien spécial
+-- Un fonction object.
 eval env (Lfob params body) = Vfob env params body
 
--- Lsend, good luck!!
+-- Lsend
 eval env (Lsend expression argOfExpression) =
     let function = eval env expression
-        arguments = map (eval env) argOfExpression -- On évalue pour obtenir les arguments et la fonction qu'on appel
+        -- On évalue pour obtenir les arguments et la fonction qu'on appel
+        arguments = map (eval env) argOfExpression 
     in case function of
-        Vbuiltin f -> f arguments -- La fonction est built in
-        Vfob corps arguments' body -> -- La fonction est pas built in, on doit s'assurer que le nombre d'arguments est bon et on doit les ajouter à l'environnement
+        Vbuiltin f -> f arguments
+        Vfob corps arguments' body ->
+            -- La fonction est pas built in, on doit s'assurer que le nombre 
+            -- d'arguments est bon et on doit les ajouter à l'environnement
             if length arguments' /= length arguments
-            then error "Nombre d'arguments incorrect (ou possiblement syntaxe est pas correcte ??)"
+            then error "Nombre d'arguments ou syntaxe incorrect"
             else let newEnv = zip arguments' arguments ++ corps
                  in eval newEnv body
         _ -> error "Erreure générale, probablement une erreur de syntaxe"
@@ -339,11 +351,11 @@ eval env (Llet var e1 body) = --let var = 3 in body
         env2 = (var, val1) : env
     in eval env2 body
 
-
-eval env (Lfix definitions body) = -- fix definitions in body
-    -- prend un (var, val), un env, et evalu la valeur + ajoute la variable à l'env
+-- prend un (var, val), un env, et evalu la valeur + ajoute la variable à l'env
+eval env (Lfix definitions body) =
     let addAssignations (var, val) accEnv = (var, eval newEnv val) : accEnv  
-        newEnv = foldr addAssignations env definitions -- nouvel env avec définitions évaliées
+        -- nouvel env avec définitions évaluées
+        newEnv = foldr addAssignations env definitions
     in eval newEnv body -- on évalue le body avec le nouvel env
 
 ---------------------------------------------------------------------------
