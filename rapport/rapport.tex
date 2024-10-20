@@ -3,7 +3,7 @@
 \usepackage[utf8]{inputenc}
 
 \title{Rapport TP 1}
-\author{Laurence Leblond \\ William Méroz-Moreau}
+\author{Laurence Leblond, 20218316 \\ William Méroz-Moreau, 20249713}
 
 \begin{document}
 	\maketitle
@@ -81,48 +81,48 @@
 	la variable assignée, la transformation de la valeur assignée et la transformation
 	du corps de l'expression. La logique nous semblait similaire pour $Lfix$ mais
 	de manière récursive sur un ensemble indéterminé d'assignations. Notre approche
-	était de d'établir la logique des fonctions $s2l$ puis celle de $eval$ avant de
+	était d'établir la logique des fonctions $s2l$ puis celle de $eval$ avant de
 	tester. Notre méthode nous semblait bonne, mais nous nous sommes rendu compte en
 	cours de route de son inéficacité. La plus grande difficulté, par contre, fut
 	l'implémentation des paternes nécessaires à l'interprétation des
 	fonctionnalités $fob$, $fix$ et les appels de fonctions ($Lsend$). Il nous a
-	fallu du temps avant de comprendre la syntaxe même de ces fonctionnalité en
+	fallu du temps avant de comprendre la syntaxe même de ces fonctionnalités en
 	code Slip. Pour les $fob$, nous n'avions pas compris à quel point il pouvait
 	être difficile d'ajouter les bonnes valeurs à l'environnement de la fonction
 	en plus de pouvoir retrouver ces valeurs de l'environnement quand vient de le
 	temps d'exécuter la fonction. Pour les $Lsend$, le plus dur a été de
-	comprendre comme extraire les arguments et les liés aux bonne variables (paramètres)
+	comprendre comme extraire les arguments et les lier aux bonne variables (paramètres)
 	de la fonction durant l'appel d'une fonction définie par l'utilisateur. Les appels
-	de fonctoins prédéfinies étaient beaucoup plus simples. Le développement des
+	de fonctions prédéfinies étaient beaucoup plus simples. Le développement des
 	fonctionnalités reliées au mot clé $fix$ ont été le plus compliquées. Il fallait
 	tout dabord comprendre le contexte dans lequel fix est utilisé, et pour quelle
 	raison. Ensuite, nous avons dû essayer de comprendre tous les cas possibles et
 	définir des règles où fix est sensé retourner une erreur. Seulement ensuite nous
 	avons pu l'implémenter. Le code des fonctions $s2l$ et $eval$ pour $Lfix$ n'est
-	pas très intuitif, et il nous a prit un grand nombre d'heures avant de comprendre
-	que $fix$ devrait faire l'utilisation de son propre environnement, en plus de
+	pas très intuitif, et cela nous a prit un grand nombre d'heures avant de comprendre
+	que $fix$ devait faire l'utilisation de son propre environnement, en plus de
 	devoir faire la distinction entre ce qui est une assignation d'une nouvelle
-	variable et ce qui est une déclaration d'une nouvelle fonction. $Lfix$ est vraiment
-	la fonctionnalité où tout le reste du code est mit en oeuvre pour complété la tâche
+	variable de ce qui est une déclaration d'une nouvelle fonction. $Lfix$ est vraiment
+	la fonctionnalité où tout le reste du code est mis en oeuvre pour compléter la tâche
 	demandée.
 	\section{Choix}
 
-	\subsection{Garder les implémentations de fonctions le plus court possible}
+	\subsection{Garder les implémentations de fonctions les plus courtes possibles}
 
 	Nous avons tenté de garder les implémentations des différents paternes des
-	fonctions $s2l$ et $eval$ le plus court possible afin de ne pas surcharger l'évaluateur
+	fonctions $s2l$ et $eval$ les plus courtes possibles afin de ne pas surcharger l'évaluateur
 	avec trop de logique qui pourrait au final créer plus de bogues, et rendre ceux-ci
 	plus difficile à identifier. Le code Slip ayant une syntaxe et des
-	fonctionnalités assez simple, il est possible de déléguer beaucoup des tâches de
+	fonctionnalités assez simples, il est possible de déléguer beaucoup des tâches de
 	l'analyse syntaxique et de l'évaluation aux mêmes fonctions pour beaucoup de scénarios
 	différents. Par exemple, le code des fonctions $s2l$ et $eval$ pour les $Lfob/V
-	fob$ et $Llet$ peuvent se résumer à quelques lignes. Par contre, cette façon de
+	fob$ et $Llet$ peut se résumer à quelques lignes. Par contre, cette façon de
 	travailler nous à causer du fil à retorde lors qu’est venu le temps d'implémenter
 	la fonctionnalité des $Lfix$. En effet, puisque nos autres fonctions étaient autant
-	dépourvues de fonctionnalité, il nous a fallu écrire beaucoup de code afin d'extraire
-	les assignations et les noms d'arguments afin de les ajouter dans leur
+	dépourvues de fonctionnalités, il nous a fallu écrire beaucoup de codes afin d'extraire
+	les assignations et les noms d'arguments pour les ajouter dans leur
 	environnement. Ces traitements auraient peut-être pu être ajoutés dans les fonctions
-	$s2l$ et $eval$ des $Lfob$ directement afin d'éviter de sur complexifier le code
+	$s2l$ et $eval$ des $Lfob$ directement afin d'éviter de trop complexifier le code
 	et mélanger les rôles des différents paternes.
 
 	\subsection{Ne pas respecter toutes les recommandations faites dans l'énoncé}
@@ -130,33 +130,33 @@
 	afin de s'entre-aider à bien comprendre la logique que nous devions suivre pour
 	compléter le code. Au début du travail, ces heures passées à travailler ensemble
 	étaient utiles, mais, nous nous sommes rendus compte qu'il nous était plus facile
-	de se séparer l'implémentation en terme de fonctionnalité afin de se laisser à
+	de se séparer l'implémentation en terme de fonctionnalités afin de se laisser à
 	chacun la possibilité de se plonger dans le code et réfléchir sur son propre temps.
-	Nous avons réaliser par contre que beaucoup de fonctionnalité dépendent des
+	Nous avons réalisé par contre que beaucoup de fonctionnalités dépendent des
 	autres (on peut seulement bien tester les $Lfob$ et $Vfob$ que lorsque la fonctionnalité
 	du $Lsend$ fonctionne bien, par exemple). Une autre recomendation était de
 	commencer par implémenter l'évaluation du sucre syntaxique pour la création d'une
 	nouvelle fonction anonyme. Après une multitude de tentatives d'implémenter cette
-	fonctionnalité, nous avons décider de procéder avec l'implémentation de tout
-	le code et de ensuite de soucier de l'implémentation du sucre syntaxique. Avec
-	le recul, nous avons réaliser que ce fut une erreur puisque l'implémentation
-	du sucre syntaxique après avoir écrit tout le reste du code est beaucoup plus
-	difficile. Plus précisément, il est difficile de faire la distinction entre un
+	fonctionnalité, nous avons décidé de procéder avec l'implémentation de tout
+	le code et ensuite de se soucier de l'implémentation du sucre syntaxique. Avec
+	le recul, nous avons réalisé que ce fut une erreur puisque l'implémentation
+	du sucre syntaxique, après avoir écrit tout le reste du code, est beaucoup plus
+	difficile. Plus précisément, il est hardu de faire la distinction entre un
 	paterne de $Lsend$ et un paterne relié au sucre syntaxique. Les 2 expressions sont
-	très similaires, avec des $Snode$ imbriqués de façons similaires, et il aurait
+	très similaires, avec des $Snode$ imbriqués de façons semblables, et il aurait
 	fallu modifier plusieurs parties du code pour le faire fonctionner correctement.
 	Malgré tout nos efforts, nous ne sommes pas parvenus à le faire marcher correctement
 	sans impacter le reste de la logique et créer des éffets de bord non désirés.
 	Si nous avions suivi la recomendation de l'énoncé en commençant pas le sucre
 	syntaxique. Nous n'aurions probablement pas eu ce problème.
 	\section{Options rejetées}
-	\subsection{Inclure les appels de fonctions anonyme dans $Lfob$}
+	\subsection{Inclure les appels de fonctions anonymes dans $Lfob$}
 	Durant l'implémentation de la fonctionnalité d'appel d'une fonction anonyme ($L
 	fob$), nous avons commencé par essayer d'implémenter cette fonctionnalité directement
 	dans le code pour l'interprétation des $Lfob$. Nous n'avions pas compris que
 	puisque la syntaxe Slip $((fob (x)(+ x 1)2)$, par exemple, constituait en
 	réalité une déclaration et un appel de fonction en même temps, il était plus sage
-	d'implémenté cette fonctionnalité dans le code pour les $Lsend$. Après
+	d'implémenter cette fonctionnalité dans le code pour les $Lsend$. Après
 	plusieurs jous à essayer de l'implémenter dans les $Lfob$, nous avons rejeté cette
 	possibilité.
 	\section{Surprises}
@@ -164,19 +164,19 @@
 	Nous ne nous attentions pas à ce que la gestion des environnements soit autant
 	complexe. Slip étant un langage avec une portée statique, nous nous attentions
 	à pouvoir simplement ajouter les données nécéssaires à l'environnement de base
-	$env0$ pour ensuite avoir accès à toute variable et sa valeur peut importe l'endroit
+	$env0$ pour ensuite avoir accès à toutes variables et sa valeur peu importe l'endroit
 	de l'appel de nos fonctions. Non seulement cette façon de penser démontre une mauvaise
 	compréhension du concept de portée statique, elle est également impossible
-	venant du fait que l'envrionnement $env0$ est immutable dans le code Haskell. Nous
+	venant du fait que l'envrionnement $env0$ est immuable dans le code Haskell. Nous
 	avons dû, après avoir réalisé notre erreur, programmer les $Lfob$ et, plus
 	difficilement, les $Lfix$ afin qu'une « sauvegarde » de l'environnement dans lequel
-	la fonction a été crée soit faite et soit garder en mémoire dans les $Lfob$. L'appel
+	la fonction a été crée soit faite et soit gardé en mémoire dans les $Lfob$. L'appel
 	des fonctions avec $Lsend$ s'est fait sans trop de soucis une fois que nous
 	avions compris le processus à suivre.
 
 	\subsection{Importance du code avec faible couplage}
-	Nous nous sommes vites rendu compte de l'importance d'écrire du code robuste
-	qui pouvait être réutilisé pour chaque paternes que nous avons fais pour les
+	Nous nous sommes vite rendus compte de l'importance d'écrire du code robuste
+	qui pouvait être réutilisé pour chaque paterne que nous avions fait pour les
 	fonctions $s2l$ et $eval$. En effet, dépendamment du code Slip que nous
 	essayons d'interpréter, il est possible que toutes les options de $s2l$ ou $eva
 	l$ soient appelées pour accomplir une tâche commune. Beaucoup de fonctions
@@ -187,10 +187,9 @@
 	\section{Conclusion}
 	En conclusion, l'implémentation de ce TP nous a forcé a améliorer nos connaissances
 	de Haskell et nous a pousser à essayer de comprendre et implémenter des fonctionnalités
-	complexes auxquelles nous n'avions jamais été confrontés auparavant. Nous
-	avons commis quelques erreurs, comme celles de ne pas respecter les recommandations
-	de l'énoncé et possiblement avoir pris trop de temps à comprendre la tâche à faire.
+	complexes auxquelles nous n'avions jamais été confrontées auparavant. Nous
+	avons commis quelques erreurs, comme celles de ne pas avoir suivi les recommandations
+	de l'énoncé (sucre syntaxique en premier, largeur plus que profondeur, etc.) et possiblement avoir pris trop de temps à comprendre la tâche à faire.
 	Nous avons, par contre, développé notre propre méthode de travail qui nous a
-	permis de remplir presque toutes les exigences requises, sauf l'ajout du sucre
-	syntaxique.
+	permis de remplir presque toutes les exigences requises.
 \end{document}
