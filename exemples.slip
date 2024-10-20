@@ -1,9 +1,18 @@
-; Fibonacci: implémenté récursivement avec 20 comme argument, pour
+; 1) Simple implémentation d'une porte logique OU EXCLUSIF.
+; Montre l'utilisation de fix, des déclarations de fonctions 
+; et des énoncés conditionnels.
+(fix ((XOR (fob (A B)
+          (if A
+             (if A false true)
+              (if A true false)))))
+     (XOR true true))                  ; ↝ False
+
+; 2) Fibonacci: implémenté récursivement avec 20 comme argument, pour
 ; montrer que la récursion et les fonctions imbriqués fonctionnent bien.
 (fix ((fib (fob (n) (if (≤ n 1) n 
   (+ (fib (- n 1)) (fib (- n 2))))))) (fib 20)) ; ↝ 6765
 
-; Grand arbre de condition, pour montrer que 
+; 3) Grand arbre de condition, pour montrer que 
 ; les expressions de très grand taille sont bien supportées.
 (if (> 10 5) ; ↝ true
     (if (< 7 3) ; ↝ false
@@ -21,7 +30,7 @@
             (if (< 3 2) 900 1000))
         1100))
 
-; Test pour prouver que la portée du langage est statique.
+; 4) Test pour prouver que la portée du langage est statique.
 ; On déclare une variable x = 10 et une autre x = 5
 ; La fonction f utilise le premier x pour le (+ x y) et non le deuxième.
 ; Si la portée était dynamique, le code utiliserait le deuxième x et la valeur
@@ -31,7 +40,7 @@
         (let (x 5)
             (f 2)))) ; ↝ 12
 
-; Test pour montrer tous les mots clés
+; 5) Test pour montrer tous les mots clés
 ; et autres fonctionnalités du langage
 ; utilisés ensemble.
 ; Le test calcul (5 + 10) + le factoriel de 3 (6) = 21
